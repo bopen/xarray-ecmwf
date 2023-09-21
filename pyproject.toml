@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+
+[project]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering"
+]
+description = "Xarray backend to map an ECMWF style request to a service to a dataset"
+dynamic = ["version"]
+license = {file = "LICENSE"}
+name = "xarray-ecmwf"
+readme = "README.md"
+
+[tool.coverage.run]
+branch = true
+
+[tool.mypy]
+strict = true
+
+[tool.ruff]
+ignore = [
+  # pydocstyle: Missing Docstrings
+  "D1"
+]
+# Black line length is 88, but black does not format comments.
+line-length = 110
+select = [
+  # pyflakes
+  "F",
+  # pycodestyle
+  "E",
+  "W",
+  # isort
+  "I",
+  # pydocstyle
+  "D"
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
+[tool.setuptools]
+packages = ["xarray_ecmwf"]
+
+[tool.setuptools_scm]
+write_to = "xarray_ecmwf/version.py"
+write_to_template = '''
+# Do not change! Do not track in version control!
+__version__ = "{version}"
+'''

@@ -1,0 +1,18 @@
+{
+  "template": "https://github.com/ecmwf-projects/cookiecutter-conda-package",
+  "commit": "308afb845f02bf8e5e5af2bab993f9fc472aa04d",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "xarray-ecmwf",
+      "project_slug": "xarray_ecmwf",
+      "project_short_description": "Xarray backend to map an ECMWF style request to a service to a dataset",
+      "copyright_holder": "B-Open Solutions srl",
+      "copyright_year": "2023",
+      "mypy_strict": "True",
+      "integration_tests": "True",
+      "_template": "https://github.com/ecmwf-projects/cookiecutter-conda-package"
+    }
+  },
+  "directory": null
+}
