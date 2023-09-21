@@ -6,7 +6,7 @@
     "cookiecutter": {
       "project_name": "xarray-ecmwf",
       "project_slug": "xarray_ecmwf",
-      "project_short_description": "Xarray backend to map an ECMWF style request to a service to a dataset",
+      "project_short_description": "Xarray backend to access an ECMWF style request to a service as a dataset",
       "copyright_holder": "B-Open Solutions srl",
       "copyright_year": "2023",
       "mypy_strict": "True",
