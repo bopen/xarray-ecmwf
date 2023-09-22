@@ -1,6 +1,9 @@
+import contextlib
 import os
 from typing import Any, Iterable
 
+import attrs
+import cf2cdm
 import xarray as xr
 
 from . import client_protocol
@@ -13,28 +16,43 @@ class ECMWFBackendArray(xr.backends.BackendArray):
     ...
 
 
-def cached_download(
-    request: dict[str, Any],
-    request_client: client_protocol.RequestClientProtocol,
-    cache_folder: str = "./.xarray-ecmwf-cache",
-    cache_file: bool = False,
-) -> str:
-    result = request_client.retrieve(request)
-    filename = request_client.get_filename(result)
-    if not os.path.isdir(cache_folder):
-        os.mkdir(cache_folder)
-    path = os.path.join(cache_folder, filename)
-    lock = xr.backends.locks.get_write_lock(filename)
-    with lock:
-        if not os.path.exists(path):
-            request_client.download(path)
-    return path
+attrs.define(slots=False)
 
-    # cfgrib_kwargs: dict[str, Any] = {},
-    #     ds = xr.open_dataset(
-    #         path, engine="cfgrib", time_dims=["valid_time"], **cfgrib_kwargs
-    #     )
-    # return cf2cdm.translate_coords(ds, cf2cdm.CDS), path
+
+class DatasetsCacher:
+    request_client: client_protocol.RequestClientProtocol
+    cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
+    translate_coords_kwargs: dict[str, Any] = {"coord_model": cf2cdm.CDS}
+    cache_file: bool = False
+    cache_folder: str = "./.xarray-ecmwf-cache"
+
+    def __attrs_post_init__(self):
+        if not os.path.isdir(self.cache_folder):
+            os.mkdir(self.cache_folder)
+
+    @contextlib.contextmanager
+    def dataset(self, request: dict[str, Any], override_cache_file: bool | None = None):
+        cache_file = self.cache_file
+        if override_cache_file is not None:
+            cache_file = override_cache_file
+        cfgrib_kwargs = self.cfgrib_kwargs
+        if not cache_file:
+            cfgrib_kwargs = cfgrib_kwargs | {"indexpath": ""}
+
+        result = self.request_client.retrieve(request)
+        filename = self.request_client.get_filename(result)
+        path = os.path.join(self.cache_folder, filename)
+
+        with xr.backends.locks.get_write_lock(filename):
+            if not os.path.exists(path):
+                try:
+                    self.request_client.download(path)
+                except Exception:
+                    os.remove(path)
+            ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
+            yield cf2cdm.translate_coords(ds, **self.translate_coords_kwargs)
+            if not cache_file:
+                os.remove(path)
 
 
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
@@ -48,6 +66,8 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         chunker: str = "cdsapi",
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
+        cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]},
+        translate_coords_kwargs: dict[str, Any] = {"coord_model": cf2cdm.CDS},
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
@@ -56,8 +76,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
 
         request_client = request_client_class(client_kwargs)
         request_chunker = request_chunker_class(filename_or_obj, request_chunks)
+        dataset_cacher = DatasetsCacher(
+            request_client, cfgrib_kwargs, translate_coords_kwargs, **cache_kwargs
+        )
+
         coords, attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
-            request_client, cache_kwargs
+            dataset_cacher
         )
         shape = [c.size for c in coords.values()]
         dims = list(coords)
