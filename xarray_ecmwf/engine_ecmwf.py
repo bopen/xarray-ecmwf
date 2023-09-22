@@ -4,6 +4,7 @@ from typing import Any, Iterable, Iterator
 
 import attrs
 import cf2cdm
+import numpy as np
 import xarray as xr
 
 from . import client_cdsapi, client_protocol
@@ -12,8 +13,43 @@ SUPPORTED_CLIENTS = {"cdsapi": client_cdsapi.CdsapiRequestClient}
 SUPPORTED_CHUNKERS = {"cdsapi": client_cdsapi.CdsapiRequestChunker}
 
 
+@attrs.define(slots=False)
 class ECMWFBackendArray(xr.backends.BackendArray):
-    ...
+    shape: Iterable[int]
+    dtype: Any
+    request_chunker: client_protocol.RequestChunkerProtocol
+    dataset_cacher: client_protocol.DatasetCacherProtocol
+
+    def __getitem__(self, key: xr.core.indexing.ExplicitIndexer) -> np.typing.ArrayLike:
+        return xr.core.indexing.explicit_indexing_adapter(
+            key,
+            self.shape,
+            xr.core.indexing.IndexingSupport.BASIC,
+            self._raw_indexing_method,
+        )
+
+    def _raw_indexing_method(self, key: tuple) -> np.typing.ArrayLike:
+        assert len(key) == 3
+        # XXX:
+        itime, ilat, ilon = key
+        if isinstance(itime, slice):
+            start_index, stop_index = self.find_start_stop(itime.start, itime.stop)
+            split_start = self.time_chunk_requests[start_index][0]
+            chunk_requests = self.time_chunk_requests[start_index : stop_index + 1]
+            htime = slice(itime.start - split_start, itime.stop - split_start)
+        else:
+            start_index, stop_index = self.find_start_stop(itime, itime + 1)
+            split_start = self.time_chunk_requests[start_index][0]
+            chunk_requests = self.time_chunk_requests[start_index : stop_index + 1]
+            htime = itime - split_start
+        chunks = []
+        for field_request in self.build_requests(chunk_requests):
+            with self.dataset_cacher.retrieve(field_request) as ds:
+                da = list(ds.data_vars.values())[0]
+                chunks.append(da)
+        cda = xr.concat(chunks, dim="time")
+        values = cda.isel(time=htime, lat=ilat, lon=ilon).values
+        return values
 
 
 @attrs.define(slots=False)
@@ -92,7 +128,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         )
         shape = [c.size for c in coords.values()]
         dims = list(coords)
-        encoding = {"preferred_chunks": request_chunker.get_chunks()}
+        encoding = {}  # {"preferred_chunks": request_chunker.get_chunks()}
 
         data_vars = {}
         for var_name in request_chunker.get_variables():

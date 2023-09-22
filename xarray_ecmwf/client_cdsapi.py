@@ -44,6 +44,13 @@ class CdsapiRequestChunker:
         coords = self.compute_request_coords()
         with dataset_cacher.retrieve(self.request) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
-            coords["lat"] = ("lat", da.lat.values, da.lat.attrs)
-            coords["lon"] = ("lon", da.lon.values, da.lon.attrs)
+            coords["lat"] = da.lat
+            coords["lon"] = da.lon
             return coords, sample_ds.attrs, da.attrs, da.dtype
+
+    def get_variables(self) -> list[str]:
+        if "variable" in self.request:
+            return list(self.request["variable"])
+        elif "param" in self.request:
+            return list(self.request["param"])
+        raise ValueError(f"'variable' parameter not found in {list(self.request)}")
