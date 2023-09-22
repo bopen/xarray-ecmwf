@@ -36,6 +36,14 @@ class CdsapiRequestChunker:
     request_chunks: dict[str, Any]
 
     def compute_request_coords(self) -> dict[str, Any]:
+        # XXX:
+        #   add compute of time coordinate
+        #   save chunk requests in instance with reference to index
+        #   take from build_chunk_requests
+        #   only then:
+        #   - extend to number
+        #   - extend to step (more tricky because it is a Timedelta)
+        #   - low priority: extend to levelInHPa
         return {}
 
     def get_coords_attrs_and_dtype(
