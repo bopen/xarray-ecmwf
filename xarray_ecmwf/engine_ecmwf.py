@@ -9,7 +9,7 @@ import xarray as xr
 from . import client_cdsapi, client_protocol
 
 SUPPORTED_CLIENTS = {"cdsapi": client_cdsapi.CdsapiRequestClient}
-SUPPORTED_CHUNKERS = {"cdsapi": None}
+SUPPORTED_CHUNKERS = {"cdsapi": client_cdsapi.CdsapiRequestChunker}
 
 
 class ECMWFBackendArray(xr.backends.BackendArray):
@@ -46,9 +46,13 @@ class DatasetCacher:
         with xr.backends.locks.get_write_lock(filename):
             if not os.path.exists(path):
                 try:
-                    self.request_client.download(path)
+                    self.request_client.download(result, path)
                 except Exception:
-                    os.remove(path)
+                    try:
+                        os.remove(path)
+                    except Exception:
+                        pass
+                    raise
             ds_raw = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
             ds = cf2cdm.translate_coords(ds_raw, **self.translate_coords_kwargs)
             try:
@@ -83,7 +87,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             request_client, cfgrib_kwargs, translate_coords_kwargs, **cache_kwargs
         )
 
-        coords, attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
+        coords, attrs, var_attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
             dataset_cacher
         )
         shape = [c.size for c in coords.values()]
@@ -99,8 +103,8 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 dataset_cacher,
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)
-            var = xr.Variable(dims, lazy_var_data, attrs, encoding)
+            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
             data_vars[var_name] = var
 
-        dataset = xr.Dataset(data_vars=data_vars, coords=coords)
+        dataset = xr.Dataset(data_vars, coords, attrs)
         return dataset

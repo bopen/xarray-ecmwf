@@ -30,7 +30,7 @@ class RequestChunkerProtocol(Protocol):
 
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: DatasetCacherProtocol
-    ) -> tuple[dict[str, Any], dict[str, Any], Any]:
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
         ...
 
     def get_variables(self) -> list[str]:

@@ -35,11 +35,15 @@ class CdsapiRequestChunker:
     request: dict[str, Any]
     request_chunks: dict[str, Any]
 
+    def compute_request_coords(self) -> dict[str, Any]:
+        return {}
+
     def get_coords_attrs_and_dtype(
-        self, dataset_cacher=client_protocol.DatasetsCacherProtocol
-    ) -> tuple[dict[str, Any], dict[str, Any], Any]:
+        self, dataset_cacher=client_protocol.DatasetCacherProtocol
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
         coords = self.compute_request_coords()
         with dataset_cacher.retrieve(self.request) as sample_ds:
-            coords["lat"] = ("lat", sample_ds.lat.values, sample_ds.lat.attrs)
-            coords["lon"] = ("lon", sample_ds.lon.values, sample_ds.lon.attrs)
-            return coords, sample_ds.attrs, sample_ds.dtype
+            da = list(sample_ds.data_vars.values())[0]
+            coords["lat"] = ("lat", da.lat.values, da.lat.attrs)
+            coords["lon"] = ("lon", da.lon.values, da.lon.attrs)
+            return coords, sample_ds.attrs, da.attrs, da.dtype
