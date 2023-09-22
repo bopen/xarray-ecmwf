@@ -38,8 +38,8 @@ class CdsapiRequestChunker:
     def get_coords_attrs_and_dtype(
         self, dataset_cacher=client_protocol.DatasetsCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], Any]:
-        coords = self.compute_coords()
-        with dataset_cacher.dataset(self.request) as sample_ds:
+        coords = self.compute_request_coords()
+        with dataset_cacher.retrieve(self.request) as sample_ds:
             coords["lat"] = ("lat", sample_ds.lat.values, sample_ds.lat.attrs)
             coords["lon"] = ("lon", sample_ds.lon.values, sample_ds.lon.attrs)
             return coords, sample_ds.attrs, sample_ds.dtype

@@ -17,7 +17,7 @@ class ECMWFBackendArray(xr.backends.BackendArray):
 
 
 @attrs.define(slots=False)
-class DatasetsCacher:
+class DatasetCacher:
     request_client: client_protocol.RequestClientProtocol
     cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
     translate_coords_kwargs: dict[str, Any] = {"coord_model": cf2cdm.CDS}
@@ -29,7 +29,7 @@ class DatasetsCacher:
             os.mkdir(self.cache_folder)
 
     @contextlib.contextmanager
-    def dataset(
+    def retrieve(
         self, request: dict[str, Any], override_cache_file: bool | None = None
     ) -> Iterator[xr.Dataset]:
         cache_file = self.cache_file
@@ -49,10 +49,13 @@ class DatasetsCacher:
                     self.request_client.download(path)
                 except Exception:
                     os.remove(path)
-            ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
-            yield cf2cdm.translate_coords(ds, **self.translate_coords_kwargs)
-            if not cache_file:
-                os.remove(path)
+            ds_raw = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
+            ds = cf2cdm.translate_coords(ds_raw, **self.translate_coords_kwargs)
+            try:
+                yield ds
+            finally:
+                if not cache_file:
+                    os.remove(path)
 
 
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
@@ -76,7 +79,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
 
         request_client = request_client_class(client_kwargs)
         request_chunker = request_chunker_class(filename_or_obj, request_chunks)
-        dataset_cacher = DatasetsCacher(
+        dataset_cacher = DatasetCacher(
             request_client, cfgrib_kwargs, translate_coords_kwargs, **cache_kwargs
         )
 
