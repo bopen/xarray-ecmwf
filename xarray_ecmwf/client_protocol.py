@@ -1,4 +1,6 @@
-from typing import Any, Protocol
+from typing import Any, ContextManager, Protocol
+
+import xarray as xr
 
 
 class RequestClientProtocol(Protocol):
@@ -15,15 +17,20 @@ class RequestClientProtocol(Protocol):
         ...
 
 
+class DatasetsCacherProtocol(Protocol):
+    def dataset(
+        self, request: dict[str, Any], override_cache_file: bool | None = None
+    ) -> ContextManager[xr.Dataset]:
+        ...
+
+
 class RequestChunkerProtocol(Protocol):
     def __init__(self, request: dict[str, Any], request_chunks: dict[str, Any]) -> None:
         ...
 
     def get_coords_attrs_and_dtype(
-        self,
-        request_client: RequestClientProtocol | None = None,
-        cache_kwargs: dict[str, Any] = {"cache_file": True},
-    ):
+        self, dataset_cacher: DatasetsCacherProtocol
+    ) -> tuple[dict[str, Any], dict[str, Any], Any]:
         ...
 
     def get_variables(self) -> list[str]:
