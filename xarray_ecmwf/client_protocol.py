@@ -5,17 +5,14 @@ class RequestClientProtocol(Protocol):
     def __init__(self, client_kwargs: dict[str, Any]) -> None:
         ...
 
-    def submit_and_wait_on_result(self, request: dict[str, Any]) -> str:
+    def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
         ...
 
-    def get_filename(self, request_uid: str) -> str:
+    def get_filename(self, result: Any) -> str:
         ...
 
-    def download(self, request_uid: str, target: str | None = None) -> str:
+    def download(self, result: Any, target: str | None = None) -> str:
         ...
-
-
-RequestClientType = type[RequestClientProtocol]
 
 
 class RequestChunkerProtocol(Protocol):
@@ -30,9 +27,6 @@ class RequestChunkerProtocol(Protocol):
         ...
 
     def get_variables(self) -> list[str]:
-        ...
-
-    def a(self):
         ...
 
     def get_chunks(self) -> dict[str, Any]:

@@ -1,6 +1,9 @@
+import os
 from typing import Any, Iterable
 
 import xarray as xr
+
+from . import client_protocol
 
 SUPPORTED_CLIENTS = {"cdsapi": None}
 SUPPORTED_CHUNKERS = {"cdsapi": None}
@@ -10,6 +13,30 @@ class ECMWFBackendArray(xr.backends.BackendArray):
     ...
 
 
+def cached_download(
+    request: dict[str, Any],
+    request_client: client_protocol.RequestClientProtocol,
+    cache_folder: str = "./.xarray-ecmwf-cache",
+    cache_file: bool = False,
+) -> str:
+    result = request_client.retrieve(request)
+    filename = request_client.get_filename(result)
+    if not os.path.isdir(cache_folder):
+        os.mkdir(cache_folder)
+    path = os.path.join(cache_folder, filename)
+    lock = xr.backends.locks.get_write_lock(filename)
+    with lock:
+        if not os.path.exists(path):
+            request_client.download(path)
+    return path
+
+    # cfgrib_kwargs: dict[str, Any] = {},
+    #     ds = xr.open_dataset(
+    #         path, engine="cfgrib", time_dims=["valid_time"], **cfgrib_kwargs
+    #     )
+    # return cf2cdm.translate_coords(ds, cf2cdm.CDS), path
+
+
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
     def open_dataset(  # type:ignore
         self,
@@ -17,15 +44,17 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         *,
         drop_variables: str | Iterable[str] | None = None,
         client: str = "cdsapi",
+        client_kwargs: dict[str, Any] = {},
         chunker: str = "cdsapi",
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
-        request_client = SUPPORTED_CLIENTS[client]
+        request_client_class = SUPPORTED_CLIENTS[client]
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
+        request_client = request_client_class(client_kwargs)
         request_chunker = request_chunker_class(filename_or_obj, request_chunks)
         coords, attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
             request_client, cache_kwargs
