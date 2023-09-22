@@ -1,14 +1,14 @@
 import contextlib
 import os
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 import attrs
 import cf2cdm
 import xarray as xr
 
-from . import client_protocol
+from . import client_cdsapi, client_protocol
 
-SUPPORTED_CLIENTS = {"cdsapi": None}
+SUPPORTED_CLIENTS = {"cdsapi": client_cdsapi.CdsapiRequestClient}
 SUPPORTED_CHUNKERS = {"cdsapi": None}
 
 
@@ -16,9 +16,7 @@ class ECMWFBackendArray(xr.backends.BackendArray):
     ...
 
 
-attrs.define(slots=False)
-
-
+@attrs.define(slots=False)
 class DatasetsCacher:
     request_client: client_protocol.RequestClientProtocol
     cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
@@ -26,12 +24,14 @@ class DatasetsCacher:
     cache_file: bool = False
     cache_folder: str = "./.xarray-ecmwf-cache"
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         if not os.path.isdir(self.cache_folder):
             os.mkdir(self.cache_folder)
 
     @contextlib.contextmanager
-    def dataset(self, request: dict[str, Any], override_cache_file: bool | None = None):
+    def dataset(
+        self, request: dict[str, Any], override_cache_file: bool | None = None
+    ) -> Iterator[xr.Dataset]:
         cache_file = self.cache_file
         if override_cache_file is not None:
             cache_file = override_cache_file
@@ -39,7 +39,7 @@ class DatasetsCacher:
         if not cache_file:
             cfgrib_kwargs = cfgrib_kwargs | {"indexpath": ""}
 
-        result = self.request_client.retrieve(request)
+        result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
         path = os.path.join(self.cache_folder, filename)
 
@@ -88,13 +88,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         encoding = {"preferred_chunks": request_chunker.get_chunks()}
 
         data_vars = {}
-        for var_name in request_client.get_variables():
+        for var_name in request_chunker.get_variables():
             var_data = ECMWFBackendArray(
                 shape,
                 dtype,
                 request_chunker,
-                request_client,
-                cache_kwargs,
+                dataset_cacher,
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)
             var = xr.Variable(dims, lazy_var_data, attrs, encoding)
