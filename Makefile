@@ -32,3 +32,6 @@ docs-build:
 	cd docs && rm -fr _api && make clean && make html
 
 # DO NOT EDIT ABOVE THIS LINE, ADD COMMANDS BELOW
+
+integration-tests:
+	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT) tests/integration*.py
