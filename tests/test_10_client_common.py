@@ -1,5 +1,6 @@
 import calendar
 import itertools
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -12,7 +13,7 @@ ALL_TIMES = [f"{t:02}:00" for t in range(24)]
 
 
 class DummyRequestClient:
-    def __init__(self, request, client_kwargs) -> None:
+    def __init__(self, request: dict[str, Any], client_kwargs: dict[str, Any]) -> None:
         pass
 
     def retrieve(self) -> None:
@@ -33,7 +34,9 @@ class DummyRequestClient:
         ("2023-06-01", "2023-07-15", 45),  # perfect chunk
     ],
 )
-def test_build_chunk_date_requests(start_date, end_date, split_days) -> None:
+def test_build_chunk_date_requests(
+    start_date: str, end_date: str, split_days: int
+) -> None:
     # date request
     request_chunks = {"day": split_days}
     request = {
@@ -68,7 +71,9 @@ def test_build_chunk_date_requests(start_date, end_date, split_days) -> None:
         (["2010", "2015", "2020"], ["01", "02", "09"], ["01", "29", "30", "31"]),
     ],
 )
-def test_build_chunk_ymd_requests(years, months, days) -> None:
+def test_build_chunk_ymd_requests(
+    years: list[str], months: list[str], days: list[str]
+) -> None:
     request_chunks = {"day": 1}
     request = {
         k: v
@@ -105,12 +110,12 @@ def test_build_chunk_ymd_requests(years, months, days) -> None:
         client_common.build_chunk_ymd_requests(request, request_chunks)
 
 
-def test_build_chunk_request():
+def test_build_chunk_request() -> None:
     coord, chunk, chunk_request = client_common.build_chunks_header_requests(
         dim="x",
         request={"x": ["a", "b", "c", "d", "e"], "y": [1]},
         request_chunks={"x": 2},
-        dtype=str
+        dtype="str",
     )
     assert chunk == 2
     assert chunk_request[0][0] == 0
@@ -124,11 +129,8 @@ def test_build_chunk_request():
         dim="x",
         request={"x": ["a", "b", "c", "d", "e", "f"], "y": [1]},
         request_chunks={},
-        dtype=str
+        dtype="str",
     )
     assert chunk == 6
     assert chunk_request[0][0] == 0
     assert chunk_request[0][1] == {"x": ["a", "b", "c", "d", "e", "f"]}
-
-
-
