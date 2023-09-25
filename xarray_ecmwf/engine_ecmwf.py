@@ -28,7 +28,7 @@ class ECMWFBackendArray(xr.backends.BackendArray):
             self._raw_indexing_method,
         )
 
-    def _raw_indexing_method(self, key: tuple) -> np.typing.ArrayLike:
+    def _raw_indexing_method(self, key: tuple[int | slice, ...]) -> np.typing.ArrayLike:
         assert len(key) == 3
         # XXX:
         itime, ilat, ilon = key

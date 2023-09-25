@@ -14,7 +14,9 @@ LOGGER = logging.getLogger(__name__)
 SUPPORTED_DATASETS = {"reanalysis-era5-single-levels", "reanalysis-era5-land"}
 
 
-def build_chunk_date_requests(request: dict[str, Any], request_split: dict[str, int]):
+def build_chunk_date_requests(
+    request: dict[str, Any], request_split: dict[str, int]
+) -> tuple[np.typing.NDArray, int, list[tuple[int, dict[str, Any]]]]:
     assert len(request_split) <= 1, "split on more than one param not supported"
     assert set(request_split) <= {"day"}
 
@@ -24,7 +26,7 @@ def build_chunk_date_requests(request: dict[str, Any], request_split: dict[str, 
     timedelta_days = pd.Timedelta(f"{chunk_days}D")
 
     times: list[np.datetime64] = []
-    chunk_requests = []
+    chunk_requests: list[tuple[int, dict[str, Any]]] = []
     start = None
 
     for date in pd.date_range(date_start_str, date_stop_str):
@@ -50,7 +52,9 @@ def build_chunk_date_requests(request: dict[str, Any], request_split: dict[str, 
     return np.array(times), len(request["time"]) * chunk_days, chunk_requests
 
 
-def build_chunk_ymd_requests(request: dict[str, Any], request_split: dict[str, int]):
+def build_chunk_ymd_requests(
+    request: dict[str, Any], request_split: dict[str, int]
+) -> tuple[np.typing.NDArray, int, list[tuple[int, dict[str, Any]]]]:
     assert len(request_split) <= 1, "split on more than one param not supported"
     assert set(request_split) < {"month", "day"}
 
@@ -87,7 +91,9 @@ def build_chunk_ymd_requests(request: dict[str, Any], request_split: dict[str, i
     return np.array(times), len(request["time"]), chunk_requests
 
 
-def build_chunk_requests(request: dict[str, Any], request_split: dict[str, int]):
+def build_chunk_requests(
+    request: dict[str, Any], request_split: dict[str, int]
+) -> tuple[np.typing.NDArray, int, list[tuple[int, dict[str, Any]]]]:
     if "year" in request:
         time, time_chunk, time_chunk_requests = build_chunk_ymd_requests(
             request, request_split
@@ -149,7 +155,7 @@ class CdsapiRequestChunker:
         return coords
 
     def get_coords_attrs_and_dtype(
-        self, dataset_cacher=client_protocol.DatasetCacherProtocol
+        self, dataset_cacher: client_protocol.DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
         coords = self.compute_request_coords()
         with dataset_cacher.retrieve(self.request) as sample_ds:
