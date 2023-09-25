@@ -13,6 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 SUPPORTED_DATASETS = {"reanalysis-era5-single-levels", "reanalysis-era5-land"}
 
+
 def build_chunk_date_requests(request: dict[str, Any], request_split: dict[str, int]):
     assert len(request_split) <= 1, "split on more than one param not supported"
     assert set(request_split) <= {"day"}
@@ -125,9 +126,7 @@ class CdsapiRequestChunker:
     request: dict[str, Any]
     request_chunks: dict[str, Any]
 
-
     def compute_request_coords(self) -> dict[str, Any]:
-
         # XXX:
         #   add compute of time coordinate
         #   save chunk requests in instance with reference to index
