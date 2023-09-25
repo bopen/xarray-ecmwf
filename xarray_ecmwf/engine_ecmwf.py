@@ -7,7 +7,7 @@ import cf2cdm
 import numpy as np
 import xarray as xr
 
-from . import client_cdsapi, client_ecmwf_opendata, client_protocol
+from . import client_cdsapi, client_common, client_ecmwf_opendata
 
 SUPPORTED_CLIENTS = {
     "cdsapi": client_cdsapi.CdsapiRequestClient,
@@ -23,8 +23,8 @@ SUPPORTED_CHUNKERS = {
 class ECMWFBackendArray(xr.backends.BackendArray):
     shape: Iterable[int]
     dtype: Any
-    request_chunker: client_protocol.RequestChunkerProtocol
-    dataset_cacher: client_protocol.DatasetCacherProtocol
+    request_chunker: client_common.RequestChunkerProtocol
+    dataset_cacher: client_common.DatasetCacherProtocol
 
     def __getitem__(self, key: xr.core.indexing.ExplicitIndexer) -> np.typing.ArrayLike:
         return xr.core.indexing.explicit_indexing_adapter(
@@ -60,7 +60,7 @@ class ECMWFBackendArray(xr.backends.BackendArray):
 
 @attrs.define(slots=False)
 class DatasetCacher:
-    request_client: client_protocol.RequestClientProtocol
+    request_client: client_common.RequestClientProtocol
     cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
     translate_coords_kwargs: dict[str, Any] = {"coord_model": cf2cdm.CDS}
     cache_file: bool = False
