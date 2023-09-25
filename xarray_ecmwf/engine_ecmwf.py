@@ -34,13 +34,13 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         itime, ilat, ilon = key
         if isinstance(itime, slice):
             start_index, stop_index = self.find_start_stop(itime.start, itime.stop)
-            split_start = self.time_chunk_requests[start_index][0]
-            chunk_requests = self.time_chunk_requests[start_index : stop_index + 1]
+            split_start = self.chunk_requests["time"][start_index][0]
+            chunk_requests = self.chunk_requests["time"][start_index : stop_index + 1]
             htime = slice(itime.start - split_start, itime.stop - split_start)
         else:
             start_index, stop_index = self.find_start_stop(itime, itime + 1)
-            split_start = self.time_chunk_requests[start_index][0]
-            chunk_requests = self.time_chunk_requests[start_index : stop_index + 1]
+            split_start = self.chunk_requests["time"][start_index][0]
+            chunk_requests = self.chunk_requests["time"][start_index : stop_index + 1]
             htime = itime - split_start
         chunks = []
         for field_request in self.build_requests(chunk_requests):

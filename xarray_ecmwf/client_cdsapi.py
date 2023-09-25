@@ -19,7 +19,7 @@ def build_chunks_header_requests(
     request: dict[str, Any],
     request_chunks: dict[str, int],
     dtype: str = "int32",
-) -> ():
+) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
     request_chunks[dim]
     chunk_requests = []
     istart = 0
@@ -162,15 +162,38 @@ class CdsapiRequestChunker:
         #   - extend to step (more tricky because it is a Timedelta)
         #   - low priority: extend to levelInHPa
 
+        self.chunks = {}
+        self.chunk_requests = {}
+        coords = {}
+
         time, time_chunk, time_chunk_requests = build_chunk_requests(
             self.request, self.request_chunks
         )
-        self.time_chunks = time_chunk
-        self.time_chunk_requests = time_chunk_requests
+        self.chunks["time"] = time_chunk
+        self.chunk_requests["time"] = time_chunk_requests
+        coords["time"] =  xr.IndexVariable("time", time, {}),  # type: ignore
 
-        coords = {
-            "time": xr.IndexVariable("time", time, {}),  # type: ignore
-        }
+        if "number" in self.request:
+            number, number_chunk, number_chunk_request = build_chunks_header_requests(
+                "number",
+                self.request,
+                self.request_chunks,
+                dtype="int32"
+            )
+            self.chunks["number"] = number_chunk
+            self.chunk_requests["number"] = number_chunk_request
+            coords["number"] = xr.IndexVariable("number", number, {})
+
+        if "step" in self.request:
+            step, step_chunk, step_chunk_request = build_chunks_header_requests(
+                "step",
+                self.request,
+                self.request_chunks,
+                dtype="int32"
+            )
+            self.chunks["step"] = step_chunk
+            self.chunk_requests["step"] = step_chunk_request
+            coords["step"] = xr.IndexVariable("step", step * np.timedelta64(1, "h"), {})
 
         return coords
 
