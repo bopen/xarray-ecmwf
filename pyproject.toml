@@ -32,7 +32,7 @@ strict = true
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
-module = ["cdsapi", "cf2cdm"]
+module = ["cdsapi", "cf2cdm", "ecmwf", "ecmwf.opendata"]
 
 [tool.ruff]
 ignore = [
