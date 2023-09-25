@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 from typing import Any, Iterable, Iterator
 
@@ -8,6 +9,8 @@ import numpy as np
 import xarray as xr
 
 from . import client_cdsapi, client_common, client_ecmwf_opendata
+
+LOGGER = logging.getLogger(__name__)
 
 SUPPORTED_CLIENTS = {
     "cdsapi": client_cdsapi.CdsapiRequestClient,
@@ -62,7 +65,7 @@ class ECMWFBackendArray(xr.backends.BackendArray):
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
     cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
-    translate_coords_kwargs: dict[str, Any] = {"coord_model": cf2cdm.CDS}
+    translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS}
     cache_file: bool = False
     cache_folder: str = "./.xarray-ecmwf-cache"
 
@@ -95,8 +98,10 @@ class DatasetCacher:
                     except Exception:
                         pass
                     raise
-            ds_raw = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
-            ds = cf2cdm.translate_coords(ds_raw, **self.translate_coords_kwargs)
+            ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
+            if self.translate_coords_kwargs is not None:
+                ds = cf2cdm.translate_coords(ds, **self.translate_coords_kwargs)
+            LOGGER.debug("request: %r ->\n%r", request, ds)
             try:
                 yield ds
             finally:
@@ -116,7 +121,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
         cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]},
-        translate_coords_kwargs: dict[str, Any] = {"coord_model": cf2cdm.CDS},
+        translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS},
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
