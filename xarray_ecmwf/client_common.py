@@ -48,16 +48,17 @@ def build_chunks_header_requests(
     request_chunks: dict[str, int],
     dtype: str = "int32",
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
-    request_chunks[dim]
     chunk_requests = []
+    request_chunks_dim = request_chunks.get(dim, len(request[dim]))
     istart = 0
     while istart < len(request[dim]):
-        indices = range(istart, istart + request_chunks[dim])
+        istop = min(istart + request_chunks_dim, len(request[dim]))
+        indices = range(istart, istop)
         values = [request[dim][k] for k in indices]
         chunk_requests.append((istart, {dim: values}))
-        istart += request_chunks[dim]
+        istart += request_chunks_dim
     coord = np.array(request[dim], dtype=dtype)
-    return coord, request_chunks[dim], chunk_requests
+    return coord, request_chunks_dim, chunk_requests
 
 
 def build_chunk_date_requests(
