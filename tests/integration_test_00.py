@@ -6,6 +6,7 @@ def test_open_dataset() -> None:
         "dataset": "reanalysis-era5-land",
         "variable": ["2m_temperature"],
         "date": ["2000-01-01/2000-01-02"],
+        "time": ["00:00", "12:00"],
     }
 
     res = xr.open_dataset(request, engine="ecmwf")  # type: ignore
