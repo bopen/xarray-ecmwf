@@ -103,3 +103,32 @@ def test_build_chunk_ymd_requests(years, months, days) -> None:
     request_chunks = {"month": 6}
     with pytest.raises(ValueError):
         client_common.build_chunk_ymd_requests(request, request_chunks)
+
+
+def test_build_chunk_request():
+    coord, chunk, chunk_request = client_common.build_chunks_header_requests(
+        dim="x",
+        request={"x": ["a", "b", "c", "d", "e"], "y": [1]},
+        request_chunks={"x": 2},
+        dtype=str
+    )
+    assert chunk == 2
+    assert chunk_request[0][0] == 0
+    assert chunk_request[1][0] == 2
+    assert chunk_request[2][0] == 4
+    assert chunk_request[0][1] == {"x": ["a", "b"]}
+    assert chunk_request[1][1] == {"x": ["c", "d"]}
+    assert chunk_request[2][1] == {"x": ["e"]}
+
+    coord, chunk, chunk_request = client_common.build_chunks_header_requests(
+        dim="x",
+        request={"x": ["a", "b", "c", "d", "e", "f"], "y": [1]},
+        request_chunks={},
+        dtype=str
+    )
+    assert chunk == 6
+    assert chunk_request[0][0] == 0
+    assert chunk_request[0][1] == {"x": ["a", "b", "c", "d", "e", "f"]}
+
+
+
