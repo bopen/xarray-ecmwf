@@ -16,7 +16,7 @@ SUPPORTED_DATASETS = {"reanalysis-era5-single-levels", "reanalysis-era5-land"}
 
 def build_chunk_date_requests(
     request: dict[str, Any], request_split: dict[str, int]
-) -> tuple[np.typing.NDArray, int, list[tuple[int, dict[str, Any]]]]:
+) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
     assert len(request_split) <= 1, "split on more than one param not supported"
     assert set(request_split) <= {"day"}
 
@@ -54,7 +54,7 @@ def build_chunk_date_requests(
 
 def build_chunk_ymd_requests(
     request: dict[str, Any], request_split: dict[str, int]
-) -> tuple[np.typing.NDArray, int, list[tuple[int, dict[str, Any]]]]:
+) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
     assert len(request_split) <= 1, "split on more than one param not supported"
     assert set(request_split) < {"month", "day"}
 
@@ -93,7 +93,7 @@ def build_chunk_ymd_requests(
 
 def build_chunk_requests(
     request: dict[str, Any], request_split: dict[str, int]
-) -> tuple[np.typing.NDArray, int, list[tuple[int, dict[str, Any]]]]:
+) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
     if "year" in request:
         time, time_chunk, time_chunk_requests = build_chunk_ymd_requests(
             request, request_split
@@ -149,7 +149,7 @@ class CdsapiRequestChunker:
         self.time_chunk_requests = time_chunk_requests
 
         coords = {
-            "time": xr.IndexVariable("time", time, {}),
+            "time": xr.IndexVariable("time", time, {}),  # type: ignore
         }
 
         return coords
