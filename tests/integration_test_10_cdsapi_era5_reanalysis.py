@@ -11,7 +11,7 @@ REQUEST = {
 }
 
 
-def test_dims() -> None:
+def test_open_dataset() -> None:
     res = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
