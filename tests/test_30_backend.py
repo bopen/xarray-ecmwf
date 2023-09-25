@@ -6,6 +6,10 @@ import pytest
 
 from xarray_ecmwf import client_common
 
+ALL_MONTHS = [f"{m:02}" for m in range(1, 13)]
+ALL_DAYS = [f"{d:02}" for d in range(1, 32)]
+ALL_TIMES = [f"{t:02}:00" for t in range(24)]
+
 
 class DummyRequestClient:
     def __init__(self, request, client_kwargs) -> None:
@@ -34,6 +38,7 @@ def test_build_chunk_date_requests(start_date, end_date, split_days) -> None:
     request_chunks = {"day": split_days}
     request = {
         "date": [f"{start_date}/{end_date}"],
+        "time": ALL_TIMES,
     }
 
     (
@@ -51,11 +56,15 @@ def test_build_chunk_date_requests(start_date, end_date, split_days) -> None:
 @pytest.mark.parametrize(
     "years, months, days",
     [
-        (["2022"], None, None),
-        (["2020"], None, None),  # leap year
-        ([str(y) for y in range(2015, 2020)], None, None),  # consecutive years
-        (["2010", "2015", "2020"], None, None),
-        (["2010", "2015", "2020"], ["01", "02", "09"], None),
+        (["2022"], ALL_MONTHS, ALL_DAYS),
+        (["2020"], ALL_MONTHS, ALL_DAYS),  # leap year
+        (
+            [str(y) for y in range(2015, 2020)],
+            ALL_MONTHS,
+            ALL_DAYS,
+        ),  # consecutive years
+        (["2010", "2015", "2020"], ALL_MONTHS, ALL_DAYS),
+        (["2010", "2015", "2020"], ["01", "02", "09"], ALL_DAYS),
         (["2010", "2015", "2020"], ["01", "02", "09"], ["01", "29", "30", "31"]),
     ],
 )
@@ -67,6 +76,7 @@ def test_build_chunk_ymd_requests(years, months, days) -> None:
             lambda x: x[1], [("year", years), ("month", months), ("day", days)]
         )
     }
+    request["time"] = ALL_TIMES
 
     (
         time,
