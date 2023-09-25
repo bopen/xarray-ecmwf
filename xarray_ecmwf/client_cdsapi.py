@@ -14,15 +14,33 @@ LOGGER = logging.getLogger(__name__)
 SUPPORTED_DATASETS = {"reanalysis-era5-single-levels", "reanalysis-era5-land"}
 
 
+def build_chunks_header_requests(
+    dim: str,
+    request: dict[str, Any],
+    request_chunks: dict[str, int],
+    dtype: str = "int32",
+) -> ():
+    request_chunks[dim]
+    chunk_requests = []
+    istart = 0
+    while istart < len(request[dim]):
+        indices = range(istart, istart + request_chunks[dim])
+        values = [request[dim][k] for k in indices]
+        chunk_requests.append((istart, {dim: values}))
+        istart += request_chunks[dim]
+    coord = np.array(request[dim], dtype=dtype)
+    return coord, request_chunks[dim], chunk_requests
+
+
 def build_chunk_date_requests(
-    request: dict[str, Any], request_split: dict[str, int]
+    request: dict[str, Any], request_chunks: dict[str, int]
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
-    assert len(request_split) <= 1, "split on more than one param not supported"
-    assert set(request_split) <= {"day"}
+    assert len(request_chunks) <= 1, "split on more than one param not supported"
+    assert set(request_chunks) <= {"day"}
 
     date_start_str, date_stop_str = request["date"][0].split("/")
     date_stop = pd.to_datetime(date_stop_str)
-    chunk_days = request_split.get("day", 1)
+    chunk_days = request_chunks.get("day", 1)
     timedelta_days = pd.Timedelta(f"{chunk_days}D")
 
     times: list[np.datetime64] = []
@@ -30,7 +48,9 @@ def build_chunk_date_requests(
     start = None
 
     for date in pd.date_range(date_start_str, date_stop_str):
-        if "day" in request_split and (start is None or date - timedelta_days == start):
+        if "day" in request_chunks and (
+            start is None or date - timedelta_days == start
+        ):
             start, stop = date, min(date + timedelta_days, date_stop)
             chunk_requests.append(
                 (
@@ -53,10 +73,10 @@ def build_chunk_date_requests(
 
 
 def build_chunk_ymd_requests(
-    request: dict[str, Any], request_split: dict[str, int]
+    request: dict[str, Any], request_chunks: dict[str, int]
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
-    assert len(request_split) <= 1, "split on more than one param not supported"
-    assert set(request_split) < {"month", "day"}
+    assert len(request_chunks) <= 1, "split on more than one param not supported"
+    assert set(request_chunks) < {"month", "day"}
 
     times: list[np.datetime64] = []
     chunk_requests = []
@@ -64,8 +84,8 @@ def build_chunk_ymd_requests(
         assert len(year) == 4
         for month in request["month"]:
             assert len(month) == 2
-            if "month" in request_split:
-                if request_split["month"] != 1:
+            if "month" in request_chunks:
+                if request_chunks["month"] != 1:
                     raise ValueError("split on month values != 1 not supported")
                 chunk_requests.append((len(times), {"year": year, "month": month}))
             for day in request["day"]:
@@ -78,8 +98,8 @@ def build_chunk_ymd_requests(
                         break
                     times.append(datetime)
                 else:
-                    if "day" in request_split:
-                        if request_split["day"] != 1:
+                    if "day" in request_chunks:
+                        if request_chunks["day"] != 1:
                             raise ValueError("split on day values != 1 not supported")
                         chunk_requests.append(
                             (len(times), {"year": year, "month": month, "day": day})
@@ -92,15 +112,15 @@ def build_chunk_ymd_requests(
 
 
 def build_chunk_requests(
-    request: dict[str, Any], request_split: dict[str, int]
+    request: dict[str, Any], request_chunks: dict[str, int]
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
     if "year" in request:
         time, time_chunk, time_chunk_requests = build_chunk_ymd_requests(
-            request, request_split
+            request, request_chunks
         )
     elif "date" in request:
         time, time_chunk, time_chunk_requests = build_chunk_date_requests(
-            request, request_split
+            request, request_chunks
         )
     else:
         raise ValueError("request must contain either 'year' or 'date'")
