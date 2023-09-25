@@ -66,9 +66,21 @@ class CdsapiRequestChunker:
             ) = client_common.build_chunks_header_requests(
                 "number", self.request, self.request_chunks, dtype="int32"
             )
-            self.chunks["number"] = number_chunk
-            self.chunk_requests["number"] = number_chunk_request
-            coords["number"] = xr.IndexVariable("number", number, {})  # type: ignore
+            self.chunks["realization"] = number_chunk
+            self.chunk_requests["realization"] = number_chunk_request
+            coords["realization"] = xr.IndexVariable("realization", number, {})  # type: ignore
+
+        if "pressure_level" in self.request:
+            (
+                level,
+                level_chunk,
+                level_chunk_request,
+            ) = client_common.build_chunks_header_requests(
+                "pressure_level", self.request, self.request_chunks, dtype="int32"
+            )
+            self.chunks["plev"] = level_chunk
+            self.chunk_requests["plev"] = level_chunk_request
+            coords["plev"] = xr.IndexVariable("plev", level, {"units": "hPa"})  # type: ignore
 
         if "step" in self.request:
             (
