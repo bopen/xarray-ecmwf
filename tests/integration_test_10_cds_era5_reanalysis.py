@@ -2,7 +2,7 @@ import xarray as xr
 
 REQUEST = {
     "dataset": "reanalysis-era5-single-levels",
-    "product_type": ["ensemble_members"],
+    "product_type": ["reanalysis"],
     "variable": ["2m_temperature"],
     "year": ["2022"],
     "month": ["01", "07"],

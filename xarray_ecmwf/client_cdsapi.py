@@ -56,7 +56,7 @@ class CdsapiRequestChunker:
         )
         self.chunks["time"] = time_chunk
         self.chunk_requests["time"] = time_chunk_requests
-        coords["time"] = (xr.IndexVariable("time", time, {}),)  # type: ignore
+        coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
 
         if "number" in self.request:
             (
@@ -68,7 +68,7 @@ class CdsapiRequestChunker:
             )
             self.chunks["number"] = number_chunk
             self.chunk_requests["number"] = number_chunk_request
-            coords["number"] = xr.IndexVariable("number", number, {})
+            coords["number"] = xr.IndexVariable("number", number, {})  # type: ignore
 
         if "step" in self.request:
             (
@@ -80,7 +80,7 @@ class CdsapiRequestChunker:
             )
             self.chunks["step"] = step_chunk
             self.chunk_requests["step"] = step_chunk_request
-            coords["step"] = xr.IndexVariable("step", step * np.timedelta64(1, "h"), {})
+            coords["step"] = xr.IndexVariable("step", step * np.timedelta64(1, "h"), {})  # type: ignore
 
         return coords
 

@@ -22,4 +22,4 @@ class EcmwfOpendataRequestClient:
     def download(self, result: Any, target: str | None = None) -> str:
         source = result["request"].pop("source")
         client = ecmwf.opendata.Client(source=source, **self.client_kwargs)
-        return client.retrieve(request=result["request"], target=target)
+        return client.retrieve(request=result["request"], target=target)  # type: ignore

@@ -47,7 +47,7 @@ def build_chunks_header_requests(
     request: dict[str, Any],
     request_chunks: dict[str, int],
     dtype: str = "int32",
-) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
+) -> tuple[np.typing.NDArray[Any], int, list[tuple[int, dict[str, Any]]]]:
     chunk_requests = []
     request_chunks_dim = request_chunks.get(dim, len(request[dim]))
     istart = 0
