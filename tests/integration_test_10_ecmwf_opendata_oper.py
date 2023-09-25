@@ -1,21 +1,19 @@
 import xarray as xr
 
 REQUEST = {
-    "dataset": "reanalysis-era5-single-levels",
-    "product_type": ["ensemble_members"],
-    "variable": ["2m_temperature"],
-    "year": ["2022"],
-    "month": ["01", "07"],
-    "day": ["01", "16"],
-    "time": ["00:00", "12:00"],
+    "source": "ecmwf",
+    "type": "fc",
+    "param": ["msl"],
+    "date": ["0"],
+    "step": ["12", "24"],
 }
 
 
-def test_cds_era5() -> None:
-    res = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
+def test_ecmwf_opendata_oper() -> None:
+    res = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
-    assert set(res.dims) == {"time", "lat", "lon"}
+    assert set(res.dims) == {"step", "lat", "lon"}
 
 
 def test_cds_era5_single_time() -> None:

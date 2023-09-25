@@ -7,10 +7,16 @@ import cf2cdm
 import numpy as np
 import xarray as xr
 
-from . import client_cdsapi, client_protocol
+from . import client_cdsapi, client_ecmwf_opendata, client_protocol
 
-SUPPORTED_CLIENTS = {"cdsapi": client_cdsapi.CdsapiRequestClient}
-SUPPORTED_CHUNKERS = {"cdsapi": client_cdsapi.CdsapiRequestChunker}
+SUPPORTED_CLIENTS = {
+    "cdsapi": client_cdsapi.CdsapiRequestClient,
+    "ecmwf-opendata": client_ecmwf_opendata.EcmwfOpendataRequestClient,
+}
+SUPPORTED_CHUNKERS = {
+    "cdsapi": client_cdsapi.CdsapiRequestChunker,
+    "ecmwf-opendata": client_cdsapi.CdsapiRequestChunker,
+}
 
 
 @attrs.define(slots=False)
