@@ -10,8 +10,6 @@ from . import client_common
 
 LOGGER = logging.getLogger(__name__)
 
-SUPPORTED_DATASETS = {"reanalysis-era5-single-levels", "reanalysis-era5-land"}
-
 
 @attrs.define
 class CdsapiRequestClient:
@@ -20,8 +18,6 @@ class CdsapiRequestClient:
     def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
         request = request.copy()
         dataset = request.pop("dataset")
-        if dataset not in SUPPORTED_DATASETS:
-            LOGGER.warning(f"{dataset=} not supported")
         client = cdsapi.Client(**self.client_kwargs)
         return client.retrieve(dataset, request | {"format": "grib"})
 
