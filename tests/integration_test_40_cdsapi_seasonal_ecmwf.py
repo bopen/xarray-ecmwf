@@ -5,9 +5,10 @@ REQUEST = {
     "originating_centre": "ecmwf",
     "system": "51",
     "variable": ["2m_temperature"],
-    "year": "2023",
-    "month": "09",
-    "day": "01",
+    "year": ["2023"],
+    "month": ["08", "09"],
+    "day": ["01"],
+    "time": ["00:00"],
     "leadtime_hour": ["36", "72"],
 }
 
@@ -16,7 +17,13 @@ def test_open_dataset() -> None:
     res = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
-    assert set(res.dims) == {"step", "lat", "lon"}
+    assert set(res.dims) == {
+        "forecast_reference_time",
+        "realization",
+        "leadtime",
+        "lat",
+        "lon",
+    }
 
 
 # def test_cds_seasonal_single_time() -> None:

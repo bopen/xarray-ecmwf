@@ -75,9 +75,11 @@ class CdsapiRequestChunker:
             time, time_chunk, time_chunk_requests = client_common.build_chunk_requests(
                 self.request, self.request_chunks
             )
-            self.chunks["time"] = time_chunk
-            self.chunk_requests["time"] = time_chunk_requests
-            coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
+            self.chunks["forecast_reference_time"] = time_chunk
+            self.chunk_requests["forecast_reference_time"] = time_chunk_requests
+            coords["forecast_reference_time"] = xr.IndexVariable(  # type: ignore
+                "forecast_reference_time", time, {}
+            )
 
         if isinstance(self.request.get("number"), list):
             (
@@ -111,9 +113,11 @@ class CdsapiRequestChunker:
             ) = client_common.build_chunks_header_requests(
                 "leadtime_hour", self.request, self.request_chunks, dtype="int32"
             )
-            self.chunks["step"] = step_chunk
-            self.chunk_requests["step"] = step_chunk_request
-            coords["step"] = xr.IndexVariable("step", step * np.timedelta64(1, "h"), {})  # type: ignore
+            self.chunks["leadtime"] = step_chunk
+            self.chunk_requests["leadtime"] = step_chunk_request
+            coords["leadtime"] = xr.IndexVariable(  # type: ignore
+                "leadtime", step * np.timedelta64(1, "h"), {}
+            )
 
         return coords
 
@@ -123,8 +127,9 @@ class CdsapiRequestChunker:
         coords = self.compute_request_coords()
         with dataset_cacher.retrieve(self.request) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
-            coords["lat"] = da.lat
-            coords["lon"] = da.lon
+            for name in da.coords:
+                if name not in coords and name in da.dims:
+                    coords[name] = da.coords[name]
             return coords, sample_ds.attrs, da.attrs, da.dtype
 
     def get_variables(self) -> list[str]:

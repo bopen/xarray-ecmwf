@@ -3,7 +3,6 @@ import xarray as xr
 REQUEST = {
     "dataset": "reanalysis-era5-pressure-levels",
     "product_type": ["ensemble_members"],
-    "number": ["1", "2"],
     "variable": ["temperature"],
     "year": ["2022"],
     "month": ["01", "07"],
@@ -17,7 +16,13 @@ def test_open_dataset() -> None:
     res = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
-    assert set(res.dims) == {"realization", "plev", "time", "lat", "lon"}
+    assert set(res.dims) == {
+        "realization",
+        "plev",
+        "forecast_reference_time",
+        "lat",
+        "lon",
+    }
 
 
 # def test_cds_era5_single_time() -> None:

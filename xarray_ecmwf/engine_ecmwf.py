@@ -64,7 +64,7 @@ class ECMWFBackendArray(xr.backends.BackendArray):
 @attrs.define(slots=False)
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
-    cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
+    cfgrib_kwargs: dict[str, Any] = {}
     translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS}
     cache_file: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
@@ -101,7 +101,7 @@ class DatasetCacher:
             ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
             if self.translate_coords_kwargs is not None:
                 ds = cf2cdm.translate_coords(ds, **self.translate_coords_kwargs)
-            LOGGER.debug("request: %r ->\n%r", request, ds)
+            LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             try:
                 yield ds
             finally:
@@ -120,7 +120,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         chunker: str = "cdsapi",
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
-        cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]},
+        cfgrib_kwargs: dict[str, Any] = {},
         translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS},
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
