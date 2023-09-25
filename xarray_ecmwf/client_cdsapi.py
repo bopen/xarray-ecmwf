@@ -28,10 +28,32 @@ class CdsapiRequestClient:
         return result.download(target)  # type: ignore
 
 
+SUPPORTED_REQUEST_DIMENSIONS = [
+    "date",
+    "year",
+    "month",
+    "day",
+    "time",
+    "number",
+    "step",
+    "pressure_level",
+]
+
+
 @attrs.define(slots=False)
 class CdsapiRequestChunker:
     request: dict[str, Any]
     request_chunks: dict[str, Any]
+
+    def get_request_dimensions(self) -> dict[str, list[Any]]:
+        request_dimensions: dict[str, list[Any]] = {}
+        for dim in SUPPORTED_REQUEST_DIMENSIONS:
+            if dim not in self.request:
+                continue
+            if not isinstance(self.request[dim], list):
+                continue
+            request_dimensions[dim] = self.request[dim]
+        return request_dimensions
 
     def compute_request_coords(self) -> dict[str, Any]:
         # XXX:

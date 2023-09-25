@@ -30,6 +30,9 @@ class RequestChunkerProtocol(Protocol):
     def __init__(self, request: dict[str, Any], request_chunks: dict[str, Any]) -> None:
         ...
 
+    def get_request_dimensions(self) -> dict[str, list[Any]]:
+        ...
+
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:

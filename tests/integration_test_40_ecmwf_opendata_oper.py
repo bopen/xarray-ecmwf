@@ -4,7 +4,7 @@ REQUEST = {
     "source": "ecmwf",
     "type": "fc",
     "param": ["msl"],
-    "date": ["0"],
+    "date": 0,
     "step": ["12", "24"],
 }
 
