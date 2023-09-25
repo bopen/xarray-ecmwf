@@ -4,7 +4,8 @@ import xarray as xr
 def test_cds_era5() -> None:
     request = {
         "dataset": "reanalysis-era5-single-levels",
-        "product_type": ["reanalysis"],
+        "product_type": ["ensemble_members"],
+        "number": ["1", "2"],
         "variable": ["2m_temperature"],
         "year": ["2022"],
         "month": ["01", "07"],
@@ -15,13 +16,14 @@ def test_cds_era5() -> None:
     res = xr.open_dataset(request, engine="ecmwf")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
-    assert set(res.dims) == {"time", "lat", "lon"}
+    assert set(res.dims) == {"number", "time", "lat", "lon"}
 
 
 def test_cds_era5_single_time() -> None:
     request = {
         "dataset": "reanalysis-era5-single-levels",
-        "product_type": ["reanalysis"],
+        "product_type": ["ensemble_members"],
+        "number": ["1", "2"],
         "variable": ["2m_temperature"],
         "year": ["2022"],
         "month": ["01", "07"],
@@ -40,7 +42,8 @@ def test_cds_era5_single_time() -> None:
 def test_cds_era5_small_slice_time() -> None:
     request = {
         "dataset": "reanalysis-era5-single-levels",
-        "product_type": ["reanalysis"],
+        "product_type": ["ensemble_members"],
+        "number": ["1", "2"],
         "variable": ["2m_temperature"],
         "year": ["2022"],
         "month": ["01", "07"],
@@ -59,7 +62,8 @@ def test_cds_era5_small_slice_time() -> None:
 def test_cds_era5_big_slice_time() -> None:
     request = {
         "dataset": "reanalysis-era5-single-levels",
-        "product_type": ["reanalysis"],
+        "product_type": ["ensemble_members"],
+        "number": ["1", "2"],
         "variable": ["2m_temperature"],
         "year": ["2022"],
         "month": ["01", "07"],
