@@ -35,7 +35,7 @@ SUPPORTED_REQUEST_DIMENSIONS = [
     "day",
     "time",
     "number",
-    "step",
+    "leadtime_hour",
     "pressure_level",
 ]
 
@@ -69,14 +69,17 @@ class CdsapiRequestChunker:
         self.chunk_requests = {}
         coords = {}
 
-        time, time_chunk, time_chunk_requests = client_common.build_chunk_requests(
-            self.request, self.request_chunks
-        )
-        self.chunks["time"] = time_chunk
-        self.chunk_requests["time"] = time_chunk_requests
-        coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
+        if isinstance(self.request.get("date"), list) or isinstance(
+            self.request.get("year"), list
+        ):
+            time, time_chunk, time_chunk_requests = client_common.build_chunk_requests(
+                self.request, self.request_chunks
+            )
+            self.chunks["time"] = time_chunk
+            self.chunk_requests["time"] = time_chunk_requests
+            coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
 
-        if "number" in self.request:
+        if isinstance(self.request.get("number"), list):
             (
                 number,
                 number_chunk,
@@ -88,7 +91,7 @@ class CdsapiRequestChunker:
             self.chunk_requests["realization"] = number_chunk_request
             coords["realization"] = xr.IndexVariable("realization", number, {})  # type: ignore
 
-        if "pressure_level" in self.request:
+        if isinstance(self.request.get("pressure_level"), list):
             (
                 level,
                 level_chunk,
@@ -100,13 +103,13 @@ class CdsapiRequestChunker:
             self.chunk_requests["plev"] = level_chunk_request
             coords["plev"] = xr.IndexVariable("plev", level, {"units": "hPa"})  # type: ignore
 
-        if "step" in self.request:
+        if isinstance(self.request.get("leadtime_hour"), list):
             (
                 step,
                 step_chunk,
                 step_chunk_request,
             ) = client_common.build_chunks_header_requests(
-                "step", self.request, self.request_chunks, dtype="int32"
+                "leadtime_hour", self.request, self.request_chunks, dtype="int32"
             )
             self.chunks["step"] = step_chunk
             self.chunk_requests["step"] = step_chunk_request

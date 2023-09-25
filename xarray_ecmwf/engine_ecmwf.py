@@ -66,7 +66,7 @@ class DatasetCacher:
     request_client: client_common.RequestClientProtocol
     cfgrib_kwargs: dict[str, Any] = {"time_dims": ["valid_time"]}
     translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS}
-    cache_file: bool = False
+    cache_file: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
     def __attrs_post_init__(self) -> None:
@@ -133,6 +133,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         dataset_cacher = DatasetCacher(
             request_client, cfgrib_kwargs, translate_coords_kwargs, **cache_kwargs
         )
+        LOGGER.info(request_chunker.get_request_dimensions())
 
         coords, attrs, var_attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
             dataset_cacher

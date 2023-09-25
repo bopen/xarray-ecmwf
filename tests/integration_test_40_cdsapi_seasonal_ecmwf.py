@@ -5,9 +5,9 @@ REQUEST = {
     "originating_centre": "ecmwf",
     "system": "51",
     "variable": ["2m_temperature"],
-    "year": ["2023"],
-    "month": ["09"],
-    "day": ["01"],
+    "year": "2023",
+    "month": "09",
+    "day": "01",
     "leadtime_hour": ["36", "72"],
 }
 
