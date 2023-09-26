@@ -15,7 +15,7 @@ def test_open_dataset() -> None:
     res = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
-    assert set(res.dims) == {"number", "latitude", "longitude"}
+    assert set(res.dims) == {"time", "latitude", "longitude"}
 
 
 # def test_cds_era5_single_time() -> None:
