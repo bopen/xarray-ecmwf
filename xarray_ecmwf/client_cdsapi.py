@@ -1,3 +1,4 @@
+import bisect
 import logging
 from typing import Any
 
@@ -140,3 +141,39 @@ class CdsapiRequestChunker:
         elif "param" in self.request:
             return list(self.request["param"])
         raise ValueError(f"'variable' parameter not found in {list(self.request)}")
+
+    def build_requests(self, chunk_requests=None) -> dict[str, Any]:
+        request = self.request.copy()
+        return request.update(**chunk_requests)
+
+    def find_start(self, dim: str, key: int) -> int:
+        chunk_requests = self.request_chunker.chunk_requests[dim]
+        start_chunks = [chunk[0] for chunk in chunk_requests]
+        return bisect.bisect(start_chunks, key)
+
+    def get_chunk_values(
+        self,
+        key: tuple[int | slice, ...],
+        dataset_cacher: ...,
+    ) -> np.typing.ArrayLike:
+        # XXX: only support `key` that access exactly one chunk
+        assert len(key) == len(self.dims)
+        request_keys = key[: len(self.request_dims)]
+
+        chunks_requests = {}
+        for dim, request_key in zip(self.request_dims, request_keys):
+            if isinstance(request_key, slice):
+                # XXX: check that the slice is exactly one chunk for everything except lat lon
+                if request_key.start is None:
+                    index = 0
+                else:
+                    index = self.find_start(dim, request_key.start)
+                chunks_requests.update(**self.chunk_requests[dim][index][1])
+            else:
+                pass
+        field_request = self.build_requests(chunks_requests)
+
+        with dataset_cacher.retrieve(field_request) as ds:
+            da = list(ds.data_vars.values())[0]
+        # XXX: check that the dimensions are in the correct order or rollaxis
+        return da.values

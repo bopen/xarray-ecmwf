@@ -1,4 +1,3 @@
-import bisect
 import contextlib
 import logging
 import os
@@ -41,38 +40,8 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         )
         return data  # type: ignore
 
-    def build_requests(self, chunk_requests=None):
-        pass
-
-    def find_start(self, dim: str, key: int):
-        chunk_requests = self.request_chunker.chunk_requests[dim]
-        start_chunks = [chunk[0] for chunk in chunk_requests]
-        return bisect.bisect(start_chunks, key)
-
     def _raw_indexing_method(self, key: tuple[int | slice, ...]) -> np.typing.ArrayLike:
-        # XXX: only support `key` that access exactly one chunk
-        assert len(key) == len(self.request_chunker.dims)
-        request_keys = key[: len(self.request_chunker.request_dims)]
-
-        chunks_requests = []
-        for dim, request_key in zip(self.request_chunker.request_dims, request_keys):
-            if isinstance(request_key, slice):
-                # XXX: check that the slice is exactly one chunk for everything except lat lon
-                if request_key.start is None:
-                    index = 0
-                else:
-                    index = self.find_start(dim, request_key.start)
-                chunks_requests.append(
-                    self.request_chunker.chunk_requests[dim][index][1]
-                )
-            else:
-                pass
-
-        field_request = self.build_requests(chunks_requests)
-        with self.dataset_cacher.retrieve(field_request) as ds:
-            da = list(ds.data_vars.values())[0]
-        # XXX: check that the dimensions are in the correct order or rollaxis
-        return da.values
+        return self.request_chunker.get_chunk_values(key, self.dataset_cacher)
 
 
 @attrs.define(slots=False)
