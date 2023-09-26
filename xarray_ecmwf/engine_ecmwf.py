@@ -25,18 +25,21 @@ SUPPORTED_CHUNKERS = {
 
 @attrs.define(slots=False)
 class ECMWFBackendArray(xr.backends.BackendArray):
-    shape: Iterable[int]
+    shape: tuple[int, ...]
     dtype: Any
     request_chunker: client_common.RequestChunkerProtocol
     dataset_cacher: client_common.DatasetCacherProtocol
 
-    def __getitem__(self, key: xr.core.indexing.ExplicitIndexer) -> np.typing.ArrayLike:
-        return xr.core.indexing.explicit_indexing_adapter(
+    def __getitem__(
+        self, key: xr.core.indexing.ExplicitIndexer
+    ) -> np.typing.NDArray[np.float32]:
+        data = xr.core.indexing.explicit_indexing_adapter(
             key,
             self.shape,
             xr.core.indexing.IndexingSupport.BASIC,
             self._raw_indexing_method,
         )
+        return data  # type: ignore
 
     def build_requests(self, chunk_requests=None):
         pass
@@ -147,7 +150,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         coords, attrs, var_attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
             dataset_cacher
         )
-        shape = [c.size for c in coords.values()]
+        shape = (c.size for c in coords.values())
         dims = list(coords)
         encoding = {"preferred_chunks": request_chunker.get_chunks()}
 
