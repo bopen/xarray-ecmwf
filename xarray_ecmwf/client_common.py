@@ -107,8 +107,7 @@ def build_chunk_date_requests(
 def build_chunk_ymd_requests(
     request: dict[str, Any], request_chunks: dict[str, int]
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
-    assert len(request_chunks) <= 1, "split on more than one param not supported"
-    assert set(request_chunks) < {"month", "day"}
+    assert set(request_chunks).intersection(["month", "day", "year"]) <= set(["day"])
 
     times: list[np.datetime64] = []
     chunk_requests = []
