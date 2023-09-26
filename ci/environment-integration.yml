@@ -10,6 +10,7 @@ dependencies:
 - cdsapi
 - ecmwf-api-client
 - ecmwf-opendata
+- pandas-stubs
 - pip
 - pip:
   - polytope-client

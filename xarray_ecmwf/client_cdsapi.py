@@ -128,6 +128,7 @@ class CdsapiRequestChunker:
             da = list(sample_ds.data_vars.values())[0]
             for name in da.coords:
                 if name not in coords and name in da.dims:
+                    assert isinstance(name, str)
                     coords[name] = da.coords[name]
                     self.file_dims.append(name)
             self.dims = list(coords)
