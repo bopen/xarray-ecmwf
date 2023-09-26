@@ -38,27 +38,20 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         )
 
     def _raw_indexing_method(self, key: tuple[int | slice, ...]) -> np.typing.ArrayLike:
+        # XXX: only support `key` that access exactly one chunk (except lat, lon)
         assert len(key) == 3
-        # XXX:
-        itime, ilat, ilon = key
+        itime, _, _ = key
         if isinstance(itime, slice):
-            start_index, stop_index = self.find_start_stop(itime.start, itime.stop)
-            split_start = self.chunk_requests["time"][start_index][0]
-            chunk_requests = self.chunk_requests["time"][start_index : stop_index + 1]
-            htime = slice(itime.start - split_start, itime.stop - split_start)
+            # XXX: check that the slice is exactly one chunk for everything except lat lon
+            start_index, _ = self.find_start_stop(itime.start, itime.stop)
+            chunk_requests = self.chunk_requests["time"][start_index]
         else:
-            start_index, stop_index = self.find_start_stop(itime, itime + 1)
-            split_start = self.chunk_requests["time"][start_index][0]
-            chunk_requests = self.chunk_requests["time"][start_index : stop_index + 1]
-            htime = itime - split_start
-        chunks = []
-        for field_request in self.build_requests(chunk_requests):
-            with self.dataset_cacher.retrieve(field_request) as ds:
-                da = list(ds.data_vars.values())[0]
-                chunks.append(da)
-        cda = xr.concat(chunks, dim="time")
-        values = cda.isel(time=htime, lat=ilat, lon=ilon).values
-        return values
+            raise ValueError
+        field_request = self.build_requests(chunk_requests)
+        with self.dataset_cacher.retrieve(field_request) as ds:
+            da = list(ds.data_vars.values())[0]
+        # XXX: check that the dimensions are in the correct order or rollaxis
+        return da.values
 
 
 @attrs.define(slots=False)
