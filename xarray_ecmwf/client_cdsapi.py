@@ -144,7 +144,8 @@ class CdsapiRequestChunker:
 
     def build_requests(self, chunk_requests=None) -> dict[str, Any]:
         request = self.request.copy()
-        return request.update(**chunk_requests)
+        request.update(**chunk_requests)
+        return request
 
     def find_start(self, dim: str, key: int) -> int:
         chunk_requests = self.request_chunker.chunk_requests[dim]
