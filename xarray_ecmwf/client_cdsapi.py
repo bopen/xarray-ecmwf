@@ -69,18 +69,6 @@ class CdsapiRequestChunker:
         self.chunk_requests = {}
         coords = {}
 
-        if isinstance(self.request.get("number"), list):
-            (
-                number,
-                number_chunk,
-                number_chunk_request,
-            ) = client_common.build_chunks_header_requests(
-                "number", self.request, self.request_chunks, dtype="int32"
-            )
-            self.chunks["number"] = number_chunk
-            self.chunk_requests["number"] = number_chunk_request
-            coords["number"] = xr.IndexVariable("number", number, {})  # type: ignore
-
         if isinstance(self.request.get("date"), list) or isinstance(
             self.request.get("year"), list
         ):
@@ -118,6 +106,21 @@ class CdsapiRequestChunker:
             coords["isobaricInhPa"] = xr.IndexVariable(  # type: ignore
                 "isobaricInhPa", level, {"units": "hPa"}
             )
+
+        # `number` is last because some CDS datasets do not allow to select
+        # ensemble members in the request and always return all of them.
+        # In this case we set the dimension in `get_coords_attrs_and_dtype`
+        if isinstance(self.request.get("number"), list):
+            (
+                number,
+                number_chunk,
+                number_chunk_request,
+            ) = client_common.build_chunks_header_requests(
+                "number", self.request, self.request_chunks, dtype="int32"
+            )
+            self.chunks["number"] = number_chunk
+            self.chunk_requests["number"] = number_chunk_request
+            coords["number"] = xr.IndexVariable("number", number, {})  # type: ignore
 
         return coords
 
