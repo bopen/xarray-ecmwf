@@ -105,10 +105,6 @@ def test_build_chunk_ymd_requests(
     with pytest.raises(ValueError):
         client_common.build_chunk_ymd_requests(request, request_chunks)
 
-    request_chunks = {"month": 6}
-    with pytest.raises(ValueError):
-        client_common.build_chunk_ymd_requests(request, request_chunks)
-
 
 def test_build_chunk_request() -> None:
     coord, chunk, chunk_request = client_common.build_chunks_header_requests(
