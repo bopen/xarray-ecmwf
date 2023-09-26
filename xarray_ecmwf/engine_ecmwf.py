@@ -99,8 +99,7 @@ class DatasetCacher:
                         pass
                     raise
             ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
-            if self.translate_coords_kwargs is not None:
-                ds = cf2cdm.translate_coords(ds, **self.translate_coords_kwargs)
+
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             try:
                 yield ds

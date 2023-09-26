@@ -75,10 +75,10 @@ class CdsapiRequestChunker:
             time, time_chunk, time_chunk_requests = client_common.build_chunk_requests(
                 self.request, self.request_chunks
             )
-            self.chunks["forecast_reference_time"] = time_chunk
-            self.chunk_requests["forecast_reference_time"] = time_chunk_requests
-            coords["forecast_reference_time"] = xr.IndexVariable(  # type: ignore
-                "forecast_reference_time", time, {}
+            self.chunks["time"] = time_chunk
+            self.chunk_requests["time"] = time_chunk_requests
+            coords["time"] = xr.IndexVariable(  # type: ignore
+                "time", time, {}
             )
 
         if isinstance(self.request.get("number"), list):
@@ -89,9 +89,9 @@ class CdsapiRequestChunker:
             ) = client_common.build_chunks_header_requests(
                 "number", self.request, self.request_chunks, dtype="int32"
             )
-            self.chunks["realization"] = number_chunk
-            self.chunk_requests["realization"] = number_chunk_request
-            coords["realization"] = xr.IndexVariable("realization", number, {})  # type: ignore
+            self.chunks["number"] = number_chunk
+            self.chunk_requests["number"] = number_chunk_request
+            coords["number"] = xr.IndexVariable("number", number, {})  # type: ignore
 
         if isinstance(self.request.get("pressure_level"), list):
             (
@@ -101,9 +101,9 @@ class CdsapiRequestChunker:
             ) = client_common.build_chunks_header_requests(
                 "pressure_level", self.request, self.request_chunks, dtype="int32"
             )
-            self.chunks["plev"] = level_chunk
-            self.chunk_requests["plev"] = level_chunk_request
-            coords["plev"] = xr.IndexVariable("plev", level, {"units": "hPa"})  # type: ignore
+            self.chunks["isobaricInhPa"] = level_chunk
+            self.chunk_requests["isobaricInhPa"] = level_chunk_request
+            coords["isobaricInhPa"] = xr.IndexVariable("isobaricInhPa", level, {"units": "hPa"})  # type: ignore
 
         if isinstance(self.request.get("leadtime_hour"), list):
             (
@@ -113,10 +113,10 @@ class CdsapiRequestChunker:
             ) = client_common.build_chunks_header_requests(
                 "leadtime_hour", self.request, self.request_chunks, dtype="int32"
             )
-            self.chunks["leadtime"] = step_chunk
-            self.chunk_requests["leadtime"] = step_chunk_request
-            coords["leadtime"] = xr.IndexVariable(  # type: ignore
-                "leadtime", step * np.timedelta64(1, "h"), {}
+            self.chunks["step"] = step_chunk
+            self.chunk_requests["step"] = step_chunk_request
+            coords["step"] = xr.IndexVariable(  # type: ignore
+                "step", step * np.timedelta64(1, "h"), {}
             )
 
         return coords

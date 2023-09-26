@@ -17,11 +17,11 @@ def test_open_dataset() -> None:
 
     assert isinstance(res, xr.Dataset)
     assert set(res.dims) == {
-        "realization",
-        "plev",
-        "forecast_reference_time",
-        "lat",
-        "lon",
+        "number",
+        "isobaricInhPa",
+        "time",
+        "latitude",
+        "longitude",
     }
 
 
