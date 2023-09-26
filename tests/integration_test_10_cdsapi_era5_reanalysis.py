@@ -43,11 +43,11 @@ def test_cds_era5_small_slice_time() -> None:
     assert res.size == 1
 
 
-# def test_cds_era5_big_slice_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
+def test_cds_era5_big_slice_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
+    da = ds.data_vars["2m_temperature"]
 
-#     res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+    res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
 
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
