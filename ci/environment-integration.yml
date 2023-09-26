@@ -7,3 +7,9 @@ dependencies:
 - pytest
 - pytest-cov
 # DO NOT EDIT ABOVE THIS LINE, ADD DEPENDENCIES BELOW
+- cdsapi
+- ecmwf-api-client
+- ecmwf-opendata
+- pip
+- pip:
+  - polytope-client
