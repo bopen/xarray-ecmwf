@@ -1,7 +1,7 @@
 # project files
-xarray_cdsapi/version.py
 *.grib
 *.idx
+.xarray-ecmwf-cache
 
 # setuptools-scm
 version.py
