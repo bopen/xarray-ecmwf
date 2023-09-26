@@ -1,3 +1,4 @@
+import bisect
 import contextlib
 import logging
 import os
@@ -37,17 +38,34 @@ class ECMWFBackendArray(xr.backends.BackendArray):
             self._raw_indexing_method,
         )
 
+    def build_requests(self, chunk_requests=None):
+        pass
+
+    def find_start(self, dim: str, key: int):
+        chunk_requests = self.request_chunker.chunk_requests[dim]
+        start_chunks = [chunk[0] for chunk in chunk_requests]
+        return bisect.bisect(start_chunks, key)
+
     def _raw_indexing_method(self, key: tuple[int | slice, ...]) -> np.typing.ArrayLike:
-        # XXX: only support `key` that access exactly one chunk (except lat, lon)
-        assert len(key) == 3
-        itime, _, _ = key
-        if isinstance(itime, slice):
-            # XXX: check that the slice is exactly one chunk for everything except lat lon
-            start_index, _ = self.find_start_stop(itime.start, itime.stop)
-            chunk_requests = self.chunk_requests["time"][start_index]
-        else:
-            raise ValueError
-        field_request = self.build_requests(chunk_requests)
+        # XXX: only support `key` that access exactly one chunk
+        assert len(key) == len(self.request_chunker.dims)
+        request_keys = key[: len(self.request_chunker.request_dims)]
+
+        chunks_requests = []
+        for dim, request_key in zip(self.request_chunker.request_dims, request_keys):
+            if isinstance(request_key, slice):
+                # XXX: check that the slice is exactly one chunk for everything except lat lon
+                if request_key.start is None:
+                    index = 0
+                else:
+                    index = self.find_start(dim, request_key.start)
+                chunks_requests.append(
+                    self.request_chunker.chunk_requests[dim][index][1]
+                )
+            else:
+                pass
+
+        field_request = self.build_requests(chunks_requests)
         with self.dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
         # XXX: check that the dimensions are in the correct order or rollaxis
