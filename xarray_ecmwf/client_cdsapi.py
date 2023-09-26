@@ -148,7 +148,7 @@ class CdsapiRequestChunker:
         return request
 
     def find_start(self, dim: str, key: int) -> int:
-        chunk_requests = self.request_chunker.chunk_requests[dim]
+        chunk_requests = self.chunk_requests[dim]
         start_chunks = [chunk[0] for chunk in chunk_requests]
         return bisect.bisect(start_chunks, key)
 
