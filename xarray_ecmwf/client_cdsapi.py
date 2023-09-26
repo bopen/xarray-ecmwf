@@ -55,6 +55,9 @@ class CdsapiRequestChunker:
             request_dimensions[dim] = self.request[dim]
         return request_dimensions
 
+    def get_chunks(self) -> dict[str, int]:
+        return self.chunks
+
     def compute_request_coords(self) -> dict[str, Any]:
         # XXX:
         #   add compute of time coordinate

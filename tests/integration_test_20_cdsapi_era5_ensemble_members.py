@@ -1,4 +1,8 @@
+import logging
+
 import xarray as xr
+
+LOGGER = logging.getLogger(__name__)
 
 REQUEST = {
     "dataset": "reanalysis-era5-single-levels",
@@ -16,6 +20,7 @@ def test_open_dataset() -> None:
 
     assert isinstance(res, xr.Dataset)
     assert set(res.dims) == {"number", "time", "latitude", "longitude"}
+    LOGGER.info(res)
 
 
 # def test_cds_era5_single_time() -> None:

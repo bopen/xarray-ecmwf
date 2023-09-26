@@ -131,7 +131,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         )
         shape = [c.size for c in coords.values()]
         dims = list(coords)
-        encoding = {}  # {"preferred_chunks": request_chunker.get_chunks()}
+        encoding = {"preferred_chunks": request_chunker.get_chunks()}
 
         data_vars = {}
         for var_name in request_chunker.get_variables():
