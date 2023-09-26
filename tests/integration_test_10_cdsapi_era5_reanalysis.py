@@ -24,7 +24,7 @@ def test_open_dataset() -> None:
 
 
 def test_cds_era5_single_time() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
     res = da.sel(time="2022-07-16T00:00").mean().compute()
@@ -34,7 +34,7 @@ def test_cds_era5_single_time() -> None:
 
 
 def test_cds_era5_small_slice_time() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
     res = da.sel(time="2022-07-02").mean().compute()
