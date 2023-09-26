@@ -142,7 +142,7 @@ class CdsapiRequestChunker:
             return list(self.request["param"])
         raise ValueError(f"'variable' parameter not found in {list(self.request)}")
 
-    def build_requests(self, chunk_requests=None) -> dict[str, Any]:
+    def build_requests(self, chunk_requests: dict[str, Any]) -> dict[str, Any]:
         request = self.request.copy()
         request.update(**chunk_requests)
         return request
@@ -161,7 +161,7 @@ class CdsapiRequestChunker:
         assert len(key) == len(self.dims)
         request_keys = key[: len(self.request_dims)]
 
-        chunks_requests = {}
+        chunks_requests: dict[str, Any] = {}
         for dim, request_key in zip(self.request_dims, request_keys):
             if isinstance(request_key, slice):
                 # XXX: check that the slice is exactly one chunk for everything except lat lon
