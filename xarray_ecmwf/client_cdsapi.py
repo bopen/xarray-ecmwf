@@ -131,11 +131,15 @@ class CdsapiRequestChunker:
         self, dataset_cacher: client_common.DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
         coords = self.compute_request_coords()
+        self.request_dims = list(coords)
+        self.file_dims = []
         with dataset_cacher.retrieve(self.request) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
             for name in da.coords:
                 if name not in coords and name in da.dims:
                     coords[name] = da.coords[name]
+                    self.file_dims.append(name)
+            self.dims = list(coords)
             return coords, sample_ds.attrs, da.attrs, da.dtype
 
     def get_variables(self) -> list[str]:
