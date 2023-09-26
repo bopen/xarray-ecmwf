@@ -155,7 +155,7 @@ class CdsapiRequestChunker:
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
-        dataset_cacher: ...,
+        dataset_cacher: client_common.DatasetCacherProtocol,
     ) -> np.typing.ArrayLike:
         # XXX: only support `key` that access exactly one chunk
         assert len(key) == len(self.dims)

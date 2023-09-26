@@ -31,8 +31,8 @@ def test_open_dataset() -> None:
 
 
 def test_cds_era5_single_time() -> None:
-    ds = xr.open_dataset(  # type: ignore
-        REQUEST,
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
         engine="ecmwf",
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
@@ -46,8 +46,8 @@ def test_cds_era5_single_time() -> None:
 
 
 def test_cds_era5_small_slice_time() -> None:
-    ds = xr.open_dataset(  # type: ignore
-        REQUEST,
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
         engine="ecmwf",
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
@@ -61,8 +61,8 @@ def test_cds_era5_small_slice_time() -> None:
 
 
 def test_cds_era5_big_slice_time() -> None:
-    ds = xr.open_dataset(  # type: ignore
-        REQUEST,
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
         engine="ecmwf",
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
