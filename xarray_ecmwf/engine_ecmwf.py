@@ -13,11 +13,11 @@ from . import client_cdsapi, client_common, client_ecmwf_opendata
 
 LOGGER = logging.getLogger(__name__)
 
-SUPPORTED_CLIENTS = {
+SUPPORTED_CLIENTS: dict[str, type[client_common.RequestClientProtocol]] = {
     "cdsapi": client_cdsapi.CdsapiRequestClient,
     "ecmwf-opendata": client_ecmwf_opendata.EcmwfOpendataRequestClient,
 }
-SUPPORTED_CHUNKERS = {
+SUPPORTED_CHUNKERS: dict[str, type[client_common.RequestChunkerProtocol]] = {
     "cdsapi": client_cdsapi.CdsapiRequestChunker,
     "ecmwf-opendata": client_cdsapi.CdsapiRequestChunker,
 }
@@ -102,7 +102,7 @@ class DatasetCacher:
         filename = self.request_client.get_filename(result)
         path = os.path.join(self.cache_folder, filename)
 
-        with xr.backends.locks.get_write_lock(filename):
+        with xr.backends.locks.get_write_lock(filename):  # type: ignore
             if not os.path.exists(path):
                 try:
                     self.request_client.download(result, path)
@@ -150,7 +150,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         coords, attrs, var_attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
             dataset_cacher
         )
-        shape = (c.size for c in coords.values())
+        shape = tuple(c.size for c in coords.values())
         dims = list(coords)
         encoding = {"preferred_chunks": request_chunker.get_chunks()}
 
@@ -162,8 +162,8 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 request_chunker,
                 dataset_cacher,
             )
-            lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)
-            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
+            lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
+            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)  # type: ignore
             data_vars[var_name] = var
 
         dataset = xr.Dataset(data_vars, coords, attrs)
