@@ -195,5 +195,5 @@ class CdsapiRequestChunker:
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
         # XXX: check that the dimensions are in the correct order or rollaxis
-        out = da.isel(selection)
+        out = da.load().isel(selection)
         return out.values
