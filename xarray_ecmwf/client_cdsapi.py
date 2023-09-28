@@ -153,6 +153,12 @@ class CdsapiRequestChunker:
         # to check
         return bisect.bisect(start_chunks, key) - 1
 
+    def size_chunk(self, dim, index):
+        size_chunk = 1
+        for req_dim in self.chunk_requests[dim][index][1]:
+            size_chunk *= len(self.chunk_requests[dim][index][1][req_dim])
+        return size_chunk
+
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
@@ -164,6 +170,7 @@ class CdsapiRequestChunker:
 
         chunks_requests: dict[str, Any] = {}
         selection = dict(zip(self.dims, key))
+        indices = {}
         for dim, request_key in zip(self.request_dims, request_keys):
             if isinstance(request_key, slice):
                 if request_key.start is None:
@@ -172,12 +179,10 @@ class CdsapiRequestChunker:
                     index = self.find_start(dim, request_key.start)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
                 # compute relative index
-
                 if request_key.start is None:
                     start = None
                 else:
                     start = request_key.start - self.chunk_requests[dim][index][0]
-
                 if request_key.stop is None:
                     stop = None
                 else:
@@ -190,10 +195,21 @@ class CdsapiRequestChunker:
                 selection[dim] = request_key - self.chunk_requests[dim][index][0]
             else:
                 raise ValueError("key type {type(request_key)} not supported")
+            indices[dim] = index
 
         field_request = self.build_requests(chunks_requests)
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
         # XXX: check that the dimensions are in the correct order or rollaxis
+
+        axis = []
+        dims = []
+        for ax, dim in enumerate(self.dims):
+            if dim not in da.dims:
+                axis.append(ax)
+                dims.append(dim)
+
+        da = da.expand_dims(dims, axis=axis)
+
         out = da.load().isel(selection)
         return out.values
