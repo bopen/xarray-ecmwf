@@ -37,17 +37,36 @@ def test_cds_era5_small_slice_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res = da.sel(time="2022-07-02").mean().compute()
+    res = da.sel(time="2022-07-01").mean().compute()
 
     assert isinstance(res, xr.DataArray)
     assert res.size == 1
 
 
-# def test_cds_era5_big_slice_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
+def test_cds_era5_empty_slice_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da = ds.data_vars["2m_temperature"]
 
-#     res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+    res = da.sel(time="2022-07-02").compute()
+    assert isinstance(res, xr.DataArray)
+    assert res["time"].size == 0
 
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+
+def test_cds_era5_big_slice_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da = ds.data_vars["2m_temperature"]
+
+    res = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
+
+
+def test_cds_era5_small_slice_time_longitute() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da = ds.data_vars["2m_temperature"]
+
+    res = da.sel(time="2022-07-01", longitude=0.25).mean().compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
