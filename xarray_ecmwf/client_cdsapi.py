@@ -166,16 +166,24 @@ class CdsapiRequestChunker:
         selection = dict(zip(self.dims, key))
         for dim, request_key in zip(self.request_dims, request_keys):
             if isinstance(request_key, slice):
-                # XXX: check that the slice is exactly one chunk for everything except lat lon
                 if request_key.start is None:
                     index = 0
                 else:
                     index = self.find_start(dim, request_key.start)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
                 # compute relative index
-                start = request_key.start - self.chunk_requests[dim][index][0]
-                stop = request_key.stop - self.chunk_requests[dim][index][0]
+
+                if request_key.start is None:
+                    start = None
+                else:
+                    start = request_key.start - self.chunk_requests[dim][index][0]
+
+                if request_key.stop is None:
+                    stop = None
+                else:
+                    stop = request_key.stop - self.chunk_requests[dim][index][0]
                 selection[dim] = slice(start, stop, request_key.step)
+
             elif isinstance(request_key, int):
                 index = self.find_start(dim, request_key)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
@@ -187,5 +195,5 @@ class CdsapiRequestChunker:
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
         # XXX: check that the dimensions are in the correct order or rollaxis
-        out = da.isel(**selection)
+        out = da.isel(selection)
         return out.values
