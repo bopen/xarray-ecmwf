@@ -44,7 +44,9 @@ class RequestChunkerProtocol(Protocol):
     def get_chunks(self) -> dict[str, Any]:
         ...
 
-    def get_chunk_values(self, key: tuple[int | slice, ...]) -> np.typing.ArrayLike:
+    def get_chunk_values(
+        self, key: tuple[int | slice, ...], dataset_cacher: DatasetCacherProtocol
+    ) -> np.typing.ArrayLike:
         ...
 
 

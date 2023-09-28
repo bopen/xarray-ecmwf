@@ -142,7 +142,7 @@ class CdsapiRequestChunker:
             return list(self.request["param"])
         raise ValueError(f"'variable' parameter not found in {list(self.request)}")
 
-    def build_requests(self, chunk_requests=None) -> dict[str, Any]:
+    def build_requests(self, chunk_requests: dict[str, Any]) -> dict[str, Any]:
         request = self.request.copy()
         request.update(**chunk_requests)
         return request
@@ -156,13 +156,13 @@ class CdsapiRequestChunker:
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
-        dataset_cacher: ...,
+        dataset_cacher: client_common.DatasetCacherProtocol,
     ) -> np.typing.ArrayLike:
         # XXX: only support `key` that access exactly one chunk
         assert len(key) == len(self.dims)
         request_keys = key[: len(self.request_dims)]
 
-        chunks_requests = {}
+        chunks_requests: dict[str, Any] = {}
         selection = dict(zip(self.dims, key))
         for dim, request_key in zip(self.request_dims, request_keys):
             if isinstance(request_key, slice):
