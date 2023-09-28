@@ -150,7 +150,8 @@ class CdsapiRequestChunker:
     def find_start(self, dim: str, key: int) -> int:
         chunk_requests = self.chunk_requests[dim]
         start_chunks = [chunk[0] for chunk in chunk_requests]
-        return bisect.bisect(start_chunks, key)
+        # to check
+        return bisect.bisect(start_chunks, key) - 1
 
     def get_chunk_values(
         self,
@@ -171,9 +172,13 @@ class CdsapiRequestChunker:
                     index = self.find_start(dim, request_key.start)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
             else:
-                pass
-        field_request = self.build_requests(chunks_requests)
+                if dim == "time":
+                    index = self.find_start(dim, request_key)
+                    chunks_requests.update(**self.chunk_requests[dim][index][1])
+                else:
+                    pass
 
+        field_request = self.build_requests(chunks_requests)
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
         # XXX: check that the dimensions are in the correct order or rollaxis
