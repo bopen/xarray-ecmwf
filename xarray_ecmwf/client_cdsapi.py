@@ -153,12 +153,6 @@ class CdsapiRequestChunker:
         # to check
         return bisect.bisect(start_chunks, key) - 1
 
-    def size_chunk(self, dim, index):
-        size_chunk = 1
-        for req_dim in self.chunk_requests[dim][index][1]:
-            size_chunk *= len(self.chunk_requests[dim][index][1][req_dim])
-        return size_chunk
-
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
