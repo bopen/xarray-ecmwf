@@ -21,7 +21,10 @@ class RequestClientProtocol(Protocol):
 
 class DatasetCacherProtocol(Protocol):
     def retrieve(
-        self, request: dict[str, Any], override_cache_file: bool | None = None
+        self,
+        request: dict[str, Any],
+        override_cache_file: bool | None = None,
+        force_valid_time_as_time: bool = False,
     ) -> ContextManager[xr.Dataset]:
         ...
 
