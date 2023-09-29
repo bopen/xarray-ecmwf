@@ -125,7 +125,10 @@ class CdsapiRequestChunker:
         coords = self.compute_request_coords()
         self.request_dims = list(coords)
         self.file_dims = []
-        with dataset_cacher.retrieve(self.request) as sample_ds:
+        sample_request = self.request.copy()
+        for _, chunks in self.chunk_requests.items():
+            sample_request |= chunks[0][1]
+        with dataset_cacher.retrieve(sample_request) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
             for name in da.coords:
                 if name not in coords and name in da.dims:
@@ -194,16 +197,16 @@ class CdsapiRequestChunker:
         field_request = self.build_requests(chunks_requests)
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
-        # XXX: check that the dimensions are in the correct order or rollaxis
+            # XXX: check that the dimensions are in the correct order or rollaxis
 
-        axis = []
-        dims = []
-        for ax, dim in enumerate(self.dims):
-            if dim not in da.dims:
-                axis.append(ax)
-                dims.append(dim)
+            axis = []
+            dims = []
+            for ax, dim in enumerate(self.dims):
+                if dim not in da.dims:
+                    axis.append(ax)
+                    dims.append(dim)
 
-        da = da.expand_dims(dims, axis=axis)
+            da = da.expand_dims(dims, axis=axis)
 
-        out = da.load().isel(selection)
-        return out.values
+            out = da.load().isel(selection)
+            return out.values
