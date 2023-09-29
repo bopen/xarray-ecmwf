@@ -89,6 +89,20 @@ class CdsapiRequestChunker:
                 "step", step * np.timedelta64(1, "h"), {}
             )
 
+        if isinstance(self.request.get("step"), list):
+            (
+                step,
+                step_chunk,
+                step_chunk_request,
+            ) = client_common.build_chunks_header_requests(
+                "step", self.request, self.request_chunks, dtype="int32"
+            )
+            self.chunks["step"] = step_chunk
+            self.chunk_requests["step"] = step_chunk_request
+            coords["step"] = xr.IndexVariable(  # type: ignore
+                "step", step * np.timedelta64(1, "h"), {}
+            )
+
         if isinstance(self.request.get("pressure_level"), list):
             (
                 level,
