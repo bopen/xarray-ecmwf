@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 import xarray as xr
@@ -5,12 +6,14 @@ import xarray as xr
 LOGGER = logging.getLogger(__name__)
 
 REQUEST = {
+    "stream": "enfo",
     "source": "ecmwf",
     "type": "pf",
     "param": ["msl"],
-    "date": 0,
+    "date": -1,
+    "step": ["12", "24", "48"],
+    "time": ["0", "12"],
     "number": [1, 2],
-    "step": [12, 24],
 }
 
 
@@ -18,35 +21,69 @@ def test_open_dataset() -> None:
     res = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
 
     assert isinstance(res, xr.Dataset)
-    assert set(res.dims) == {"number", "step", "latitude", "longitude"}
+    assert set(res.dims) == {"time", "step", "latitude", "longitude", "number"}
+    assert res.time.size == 2
+    assert res.step.size == 3
+
     LOGGER.info(res)
 
 
-# def test_cds_era5_single_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
+def test_cds_era5_single_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    da = ds.data_vars["msl"]
 
-#     res = da.sel(time="2022-07-16T00:00").mean().compute()
+    time = datetime.date.today() - datetime.timedelta(days=1)
+    res = da.sel(time=f"{time}T00:00").compute()
 
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+    assert isinstance(res, xr.DataArray)
+    assert set(res.dims) == {"step", "latitude", "longitude", "number"}
 
+    res = da.sel(time=f"{time}T00:00").mean().compute()
 
-# def test_cds_era5_small_slice_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
-
-#     res = da.sel(time="2022-07-02").mean().compute()
-
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+    assert res.size == 1
 
 
-# def test_cds_era5_big_slice_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
+def test_cds_era5_small_slice_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    da = ds.data_vars["msl"]
 
-#     res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+    time = datetime.date.today() - datetime.timedelta(days=1)
+    res = da.sel(time=f"{time}").compute()
 
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+    assert isinstance(res, xr.DataArray)
+    assert res.time.size == 2
+
+    res = da.sel(time=f"{time}").mean().compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
+
+
+def test_cds_era5_small_step() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    da = ds.data_vars["msl"]
+
+    datetime.date.today() - datetime.timedelta(days=1)
+    res = da.sel(step=datetime.timedelta(hours=12)).compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert set(res.dims) == {"time", "latitude", "longitude", "number"}
+
+    res = da.sel(step=datetime.timedelta(hours=12)).mean().compute()
+
+    assert res.size == 1
+
+
+def test_cds_era5_small_slice_step() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    da = ds.data_vars["msl"]
+
+    datetime.date.today() - datetime.timedelta(days=1)
+
+    step_slice = slice(datetime.timedelta(hours=12), datetime.timedelta(hours=24))
+
+    res = da.sel(step=step_slice).compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert set(res.dims) == {"time", "step", "latitude", "longitude", "number"}
+    assert res.step.size == 2

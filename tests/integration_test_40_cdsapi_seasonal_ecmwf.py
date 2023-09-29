@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 import xarray as xr
 
 LOGGER = logging.getLogger(__name__)
@@ -9,7 +10,7 @@ REQUEST = {
     "originating_centre": "ecmwf",
     "system": "51",
     "variable": ["2m_temperature"],
-    "year": ["2023"],
+    "year": ["2022", "2023"],
     "month": ["08", "09"],
     "day": ["01"],
     "time": ["00:00"],
@@ -28,34 +29,47 @@ def test_open_dataset() -> None:
         "latitude",
         "longitude",
     }
+    assert res.time.size == 4
+    assert res.step.size == 2
+
     LOGGER.info(res)
 
 
-# def test_cds_seasonal_single_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
+def test_cds_seasonal_single_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
+    da = ds.data_vars["2m_temperature"]
 
-#     res = da.sel(time="2022-07-16T00:00").mean().compute()
+    res = da.sel(time="2023-08-01T00:00").mean().compute()
 
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
-
-
-# def test_cds_seasonal_small_slice_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
-
-#     res = da.sel(time="2022-07-02").mean().compute()
-
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
 
 
-# def test_cds_seasonal_big_slice_time() -> None:
-#     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
-#     da = ds.data_vars["2m_temperature"]
+def test_cds_seasonal_small_slice_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
+    da = ds.data_vars["2m_temperature"]
 
-#     res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+    res = da.sel(time="2023-08-01").mean().compute()
 
-#     assert isinstance(res, xr.DataArray)
-#     assert res.size == 1
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
+
+
+def test_cds_seasonal_small_slice_time_and_step() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
+    da = ds.data_vars["2m_temperature"]
+
+    res = da.sel(time="2023-08-01", step=np.timedelta64(36, "h")).mean().compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
+
+
+def test_cds_seasonal_big_slice_time() -> None:
+    ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
+    da = ds.data_vars["2m_temperature"]
+
+    res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
