@@ -75,8 +75,7 @@ def build_chunks_header_requests(
 def build_chunk_date_requests(
     request: dict[str, Any], request_chunks: dict[str, int]
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
-    assert len(request_chunks) <= 1, "split on more than one param not supported"
-    assert set(request_chunks) <= {"day"}
+    assert set(request_chunks).intersection(["month", "day", "year"]) <= {"day"}
 
     date_start_str, date_stop_str = request["date"][0].split("/")
     date_stop = pd.to_datetime(date_stop_str)
