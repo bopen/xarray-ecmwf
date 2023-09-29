@@ -58,7 +58,10 @@ class DatasetCacher:
 
     @contextlib.contextmanager
     def retrieve(
-        self, request: dict[str, Any], override_cache_file: bool | None = None
+        self,
+        request: dict[str, Any],
+        override_cache_file: bool | None = None,
+        force_valid_time_as_time: bool = False,
     ) -> Iterator[xr.Dataset]:
         cache_file = self.cache_file
         if override_cache_file is not None:
@@ -81,7 +84,13 @@ class DatasetCacher:
                     except Exception:
                         pass
                     raise
+            # HACK: this is a horrible work-around for ERA5 derived datasets that
+            #   are indexed by "time" abd "step" when the request has not "step"
+            if force_valid_time_as_time:
+                cfgrib_kwargs = cfgrib_kwargs | {"time_dims": ("valid_time",)}
             ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
+            if force_valid_time_as_time:
+                ds = ds.swap_dims(valid_time="time")
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             try:
                 yield ds
@@ -121,7 +130,10 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         )
         shape = tuple(c.size for c in coords.values())
         dims = list(coords)
-        encoding = {"preferred_chunks": request_chunker.get_chunks()}
+        encoding = {
+            "preferred_chunks": request_chunker.get_chunks(),
+            "request_chunker": request_chunker,
+        }
 
         data_vars = {}
         for var_name in request_chunker.get_variables():

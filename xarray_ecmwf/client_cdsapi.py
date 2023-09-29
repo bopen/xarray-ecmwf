@@ -37,6 +37,7 @@ SUPPORTED_REQUEST_DIMENSIONS = [
     "time",
     "number",
     "leadtime_hour",
+    "step",
     "pressure_level",
 ]
 
@@ -128,7 +129,19 @@ class CdsapiRequestChunker:
         sample_request = self.request.copy()
         for _, chunks in self.chunk_requests.items():
             sample_request |= chunks[0][1]
-        with dataset_cacher.retrieve(sample_request) as sample_ds:
+        # HACK: this is a horrible work-around for ERA5 derived datasets that
+        #   are indexed by "time" and "step" when the request has no "step"
+        self.force_valid_time_as_time = False
+        with dataset_cacher.retrieve(
+            sample_request, override_cache_file=True
+        ) as sample_ds:
+            if "step" not in self.request_dims and "step" in sample_ds.dims:
+                self.force_valid_time_as_time = True
+        with dataset_cacher.retrieve(
+            sample_request,
+            override_cache_file=True,
+            force_valid_time_as_time=self.force_valid_time_as_time,
+        ) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
             for name in da.coords:
                 if name not in coords and name in da.dims:
@@ -195,7 +208,9 @@ class CdsapiRequestChunker:
             indices[dim] = index
 
         field_request = self.build_requests(chunks_requests)
-        with dataset_cacher.retrieve(field_request) as ds:
+        with dataset_cacher.retrieve(
+            field_request, force_valid_time_as_time=self.force_valid_time_as_time
+        ) as ds:
             da = list(ds.data_vars.values())[0]
             # XXX: check that the dimensions are in the correct order or rollaxis
 
