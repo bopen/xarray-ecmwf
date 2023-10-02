@@ -41,7 +41,8 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         return data  # type: ignore
 
     def _raw_indexing_method(self, key: tuple[int | slice, ...]) -> np.typing.ArrayLike:
-        return self.request_chunker.get_chunk_values(key, self.dataset_cacher)
+        out = self.request_chunker.get_chunk_values(key, self.dataset_cacher)
+        return out
 
 
 @attrs.define(slots=False)
@@ -63,6 +64,7 @@ class DatasetCacher:
         override_cache_file: bool | None = None,
         force_valid_time_as_time: bool = False,
     ) -> Iterator[xr.Dataset]:
+        print(f"retriving {request}")
         cache_file = self.cache_file
         if override_cache_file is not None:
             cache_file = override_cache_file
@@ -144,7 +146,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 dataset_cacher,
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
-            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)  # type: ignore
+            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
             data_vars[var_name] = var
 
         dataset = xr.Dataset(data_vars, coords, attrs)

@@ -37,7 +37,6 @@ SUPPORTED_REQUEST_DIMENSIONS = [
     "time",
     "number",
     "leadtime_hour",
-    "step",
     "pressure_level",
 ]
 
@@ -140,7 +139,7 @@ class CdsapiRequestChunker:
         coords = self.compute_request_coords()
         self.request_dims = list(coords)
         self.file_dims = []
-        sample_request = self.request.copy()
+        sample_request = self.first_chunk_request()
         for _, chunks in self.chunk_requests.items():
             sample_request |= chunks[0][1]
         # HACK: this is a horrible work-around for ERA5 derived datasets that
@@ -181,7 +180,13 @@ class CdsapiRequestChunker:
         chunk_requests = self.chunk_requests[dim]
         start_chunks = [chunk[0] for chunk in chunk_requests]
         # to check
-        return bisect.bisect(start_chunks, key) - 1
+        return bisect.bisect(start_chunks, key)
+
+    def first_chunk_request(self) -> dict[str, Any]:
+        request = self.request.copy()
+        for chunks in self.chunk_requests.values():
+            request.update(**chunks[0][1])
+        return request
 
     def get_chunk_values(
         self,
@@ -218,7 +223,7 @@ class CdsapiRequestChunker:
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
                 selection[dim] = request_key - self.chunk_requests[dim][index][0]
             else:
-                raise ValueError("key type {type(request_key)} not supported")
+                raise ValueError(f"key type {type(request_key)} not supported")
             indices[dim] = index
 
         field_request = self.build_requests(chunks_requests)
