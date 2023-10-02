@@ -181,7 +181,8 @@ class CdsapiRequestChunker:
         chunk_requests = self.chunk_requests[dim]
         start_chunks = [chunk[0] for chunk in chunk_requests]
         # to check
-        return bisect.bisect(start_chunks, key)
+        out = bisect.bisect(start_chunks, key) - 1
+        return out
 
     def first_chunk_request(self) -> dict[str, Any]:
         request = self.request.copy()
