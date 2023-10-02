@@ -141,8 +141,6 @@ class CdsapiRequestChunker:
         self.request_dims = list(coords)
         self.file_dims = []
         sample_request = self.first_chunk_request()
-        for _, chunks in self.chunk_requests.items():
-            sample_request |= chunks[0][1]
         # HACK: this is a horrible work-around for ERA5 derived datasets that
         #   are indexed by "time" and "step" when the request has no "step"
         self.force_valid_time_as_time = False
