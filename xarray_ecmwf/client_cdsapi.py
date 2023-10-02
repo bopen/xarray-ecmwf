@@ -37,6 +37,7 @@ SUPPORTED_REQUEST_DIMENSIONS = [
     "time",
     "number",
     "leadtime_hour",
+    "step",
     "pressure_level",
 ]
 
