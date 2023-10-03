@@ -62,10 +62,10 @@ class CdsapiRequestChunker:
 
     def maybe_update_coords_and_chunk_info(
         self,
-        request_coord_name: dict[str, Any],
-        coord_name: dict[str, Any],
+        request_coord_name: str,
+        coord_name: str,
         indexer_kwargs: dict["str", Any] = {},
-    ):
+    ) -> None:
         if request_coord_name in self.request_chunks:
             if isinstance(self.request.get(request_coord_name), list):
                 (
@@ -85,6 +85,7 @@ class CdsapiRequestChunker:
                     self.chunked_coords[coord_name] = xr.IndexVariable(  # type: ignore
                         coord_name, coord, {}
                     )
+        return
 
     def compute_chunked_request_coords(self) -> dict[str, Any]:
         self.chunks = {}
@@ -118,8 +119,9 @@ class CdsapiRequestChunker:
         # ensemble members in the request and always return all of them.
         # In this case we set the dimension in `get_coords_attrs_and_dtype`
         self.maybe_update_coords_and_chunk_info("number", "number")
+        return self.chunked_coords.copy()
 
-    def is_reanalysis(self, sample_ds):
+    def is_reanalysis(self, sample_ds: xr.Dataset) -> bool:
         out = False
         if (
             "step" not in self.request
