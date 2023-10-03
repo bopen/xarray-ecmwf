@@ -78,7 +78,7 @@ def build_chunk_date_requests(
     assert set(request_chunks).intersection(["month", "day", "year"]) <= {"day"}
 
     date_start_str, date_stop_str = request["date"][0].split("/")
-    date_stop = pd.to_datetime(date_stop_str)
+    date_stop = pd.to_datetime(date_stop_str) - pd.Timedelta(1, "d")
     chunk_days = request_chunks.get("day", 1)
     timedelta_days = pd.Timedelta(f"{chunk_days}D")
 
