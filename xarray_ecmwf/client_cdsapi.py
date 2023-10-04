@@ -11,6 +11,8 @@ from . import client_common
 
 LOGGER = logging.getLogger(__name__)
 
+COORDINATES_ORDER = ("time", "step", "isobaricInhPa", "number")
+
 
 @attrs.define
 class CdsapiRequestClient:
@@ -123,22 +125,15 @@ class CdsapiRequestChunker:
 
     def is_reanalysis(self, sample_ds: xr.Dataset) -> bool:
         out = False
-        if (
-            "step" not in self.request
-            and "leadtime_hour" not in self.request
-            and "step" in sample_ds.dims
-        ):
+        if "leadtime_hour" not in self.request and "step" in sample_ds.dims:
             out = True
         return out
 
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: client_common.DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
-        self.compute_chunked_request_coords()
-        coords = self.chunked_coords.copy()
-
+        chunked_request_coords = self.compute_chunked_request_coords()
         self.request_chunked_dims = list(self.chunked_coords)
-        self.file_dims = []
         sample_request = self.first_chunk_request()
         # HACK: this is a horrible work-around for ERA5 derived datasets that
         #   are indexed by "time" and "step" when the request has no "step"
@@ -153,11 +148,20 @@ class CdsapiRequestChunker:
             force_valid_time_as_time=self.force_valid_time_as_time,
         ) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
-            for name in da.coords:
+            coords: dict[str, Any] = {}
+            # ensure order
+            print(COORDINATES_ORDER)
+            for name in COORDINATES_ORDER:
+                print(list(coords))
+                if name in chunked_request_coords:
+                    coords[name] = chunked_request_coords[name]
+                elif name in da.dims:
+                    assert isinstance(name, str)
+                    coords[name] = da.coords[name]
+            for name in da.coords:  # type: ignore
                 if name not in coords and name in da.dims:
                     assert isinstance(name, str)
                     coords[name] = da.coords[name]
-                    self.file_dims.append(name)
             self.dims = list(coords)
             return coords, sample_ds.attrs, da.attrs, da.dtype
 
@@ -186,6 +190,13 @@ class CdsapiRequestChunker:
             request.update(**chunks[0][1])
         return request
 
+    def ensure_dims_order(self, da: xr.DataArray) -> xr.DataArray:
+        dims = []
+        for dim in self.dims:
+            if dim in da.dims:
+                dims.append(dim)
+        return da.transpose(*dims)
+
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
@@ -193,35 +204,38 @@ class CdsapiRequestChunker:
     ) -> np.typing.ArrayLike:
         # XXX: only support `key` that access exactly one chunk
         assert len(key) == len(self.dims)
-        request_keys = key[: len(self.request_chunked_dims)]
+        chunks_key = {}
+        for name, k in zip(self.dims, key):
+            if name in self.request_chunked_dims:
+                chunks_key[name] = k
 
         chunks_requests: dict[str, Any] = {}
         selection = dict(zip(self.dims, key))
         indices = {}
-        for dim, request_key in zip(self.request_chunked_dims, request_keys):
-            if isinstance(request_key, slice):
-                if request_key.start is None:
+        for dim, k in chunks_key.items():
+            if isinstance(k, slice):
+                if k.start is None:
                     index = 0
                 else:
-                    index = self.find_start(dim, request_key.start)
+                    index = self.find_start(dim, k.start)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
                 # compute relative index
-                if request_key.start is None:
+                if k.start is None:
                     start = None
                 else:
-                    start = request_key.start - self.chunk_requests[dim][index][0]
-                if request_key.stop is None:
+                    start = k.start - self.chunk_requests[dim][index][0]
+                if k.stop is None:
                     stop = None
                 else:
-                    stop = request_key.stop - self.chunk_requests[dim][index][0]
-                selection[dim] = slice(start, stop, request_key.step)
+                    stop = k.stop - self.chunk_requests[dim][index][0]
+                selection[dim] = slice(start, stop, k.step)
 
-            elif isinstance(request_key, int):
-                index = self.find_start(dim, request_key)
+            elif isinstance(k, int):
+                index = self.find_start(dim, k)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
-                selection[dim] = request_key - self.chunk_requests[dim][index][0]
+                selection[dim] = k - self.chunk_requests[dim][index][0]
             else:
-                raise ValueError(f"key type {type(request_key)} not supported")
+                raise ValueError(f"key type {type(k)} not supported")
             indices[dim] = index
 
         field_request = self.build_requests(chunks_requests)
@@ -229,7 +243,8 @@ class CdsapiRequestChunker:
             field_request, force_valid_time_as_time=self.force_valid_time_as_time
         ) as ds:
             da = list(ds.data_vars.values())[0]
-            # XXX: check that the dimensions are in the correct order or rollaxis
+            da = self.ensure_dims_order(da)
+            # XXX: check that the dimensions are in the correct order
 
             axis = []
             dims = []
