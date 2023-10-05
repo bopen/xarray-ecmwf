@@ -67,6 +67,7 @@ class CdsapiRequestChunker:
         request_coord_name: str,
         coord_name: str,
         indexer_kwargs: dict["str", Any] = {},
+        dtype="int32",
     ) -> None:
         if request_coord_name in self.request_chunks:
             if isinstance(self.request.get(request_coord_name), list):
@@ -75,7 +76,7 @@ class CdsapiRequestChunker:
                     coord_chunk,
                     coord_chunk_request,
                 ) = client_common.build_chunks_header_requests(
-                    request_coord_name, self.request, self.request_chunks, dtype="int32"
+                    request_coord_name, self.request, self.request_chunks, dtype=dtype
                 )
                 self.chunks[coord_name] = coord_chunk
                 self.chunk_requests[coord_name] = coord_chunk_request
@@ -120,12 +121,20 @@ class CdsapiRequestChunker:
         # `number` is last because some CDS datasets do not allow to select
         # ensemble members in the request and always return all of them.
         # In this case we set the dimension in `get_coords_attrs_and_dtype`
-        self.maybe_update_coords_and_chunk_info("number", "number")
+        self.maybe_update_coords_and_chunk_info(
+            "number",
+            "number",
+            dtype="int64",
+        )
         return self.chunked_coords.copy()
 
     def is_reanalysis(self, sample_ds: xr.Dataset) -> bool:
         out = False
-        if "leadtime_hour" not in self.request and "step" in sample_ds.dims:
+        if (
+            "leadtime_hour" not in self.request
+            and "step" not in self.request
+            and "step" in sample_ds.dims
+        ):
             out = True
         return out
 
