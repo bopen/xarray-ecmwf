@@ -30,6 +30,25 @@ def test_open_dataset() -> None:
     LOGGER.info(res)
 
 
+def test_compare_chunked_no_chunked() -> None:
+    ds1 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"day": 1, "pressure_level": 1},
+        chunks={},
+    )
+    res1 = ds1.data_vars["temperature"].load()
+
+    ds2 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        chunks={},
+    )
+    res2 = ds2.data_vars["temperature"].load()
+
+    assert res1.equals(res2)
+
+
 def test_cds_era5_single_time() -> None:
     ds = xr.open_dataset(
         REQUEST,  # type: ignore
@@ -39,24 +58,9 @@ def test_cds_era5_single_time() -> None:
     )
     da = ds.data_vars["temperature"]
 
-    res1 = da.sel(time="2022-07-16T00:00").mean().compute()
+    res = da.sel(time="2022-07-16T00:00")
 
-    assert isinstance(res1, xr.DataArray)
-    assert res1.size == 1
-
-    ds = xr.open_dataset(
-        REQUEST,  # type: ignore
-        engine="ecmwf",
-        chunks={},
-    )
-    da = ds.data_vars["temperature"]
-
-    res2 = da.sel(time="2022-07-16T00:00").mean().compute()
-
-    assert isinstance(res2, xr.DataArray)
-    assert res2.size == 1
-
-    assert res1.equals(res2)
+    assert isinstance(res, xr.DataArray)
 
 
 def test_cds_era5_small_slice_time() -> None:

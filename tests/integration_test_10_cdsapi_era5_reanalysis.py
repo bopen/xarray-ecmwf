@@ -23,99 +23,60 @@ def test_open_dataset() -> None:
     LOGGER.info(res)
 
 
+def test_compare_chunked_no_chunked() -> None:
+    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
+    da1 = ds1.data_vars["2m_temperature"]
+
+    ds2 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da2 = ds2.data_vars["2m_temperature"]
+
+    assert da1.equals(da2)
+
+
 def test_cds_era5_single_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res1 = da.sel(time="2022-07-16T00:00").mean().compute()
+    res = da.sel(time="2022-07-16T00:00").mean().compute()
 
-    assert isinstance(res1, xr.DataArray)
-    assert res1.size == 1
-
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
-
-    res2 = da.sel(time="2022-07-16T00:00").mean().compute()
-
-    assert isinstance(res2, xr.DataArray)
-    assert res2.size == 1
-
-    assert res1.equals(res2)
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
 
 
 def test_cds_era5_small_slice_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res1 = da.sel(time="2022-07-01").mean().compute()
+    res = da.sel(time="2022-07-01").mean().compute()
 
-    assert isinstance(res1, xr.DataArray)
-    assert res1.size == 1
-
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
-
-    res2 = da.sel(time="2022-07-01").mean().compute()
-
-    assert isinstance(res2, xr.DataArray)
-    assert res2.size == 1
-
-    assert res1.equals(res2)
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
 
 
 def test_cds_era5_empty_slice_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res1 = da.sel(time="2022-07-02").compute()
-    assert isinstance(res1, xr.DataArray)
-    assert res1["time"].size == 0
-
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
-
-    res2 = da.sel(time="2022-07-02").compute()
-    assert isinstance(res2, xr.DataArray)
-    assert res2["time"].size == 0
-
-    assert res1.equals(res2)
+    res = da.sel(time="2022-07-02").compute()
+    assert isinstance(res, xr.DataArray)
+    assert res["time"].size == 0
 
 
 def test_cds_era5_big_slice_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res1 = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
+    res = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
 
-    assert isinstance(res1, xr.DataArray)
-    assert res1.size == 1
-
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
-
-    res2 = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
-
-    assert isinstance(res2, xr.DataArray)
-    assert res2.size == 1
-
-    assert res1.equals(res2)
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
 
 
 def test_cds_era5_small_slice_time_longitute() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res1 = da.sel(time="2022-07-01", longitude=0.25).mean().compute()
+    res = da.sel(time="2022-07-01", longitude=0.25).mean().compute()
 
-    assert isinstance(res1, xr.DataArray)
-    assert res1.size == 1
-
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
-
-    res2 = da.sel(time="2022-07-01", longitude=0.25).mean().compute()
-
-    assert isinstance(res2, xr.DataArray)
-    assert res2.size == 1
-
-    assert res1.equals(res2)
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1

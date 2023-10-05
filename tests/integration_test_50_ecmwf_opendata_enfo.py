@@ -28,6 +28,28 @@ def test_open_dataset() -> None:
     LOGGER.info(res)
 
 
+def test_compare_chunked_no_chunked() -> None:
+    ds1 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        request_chunks={"step": 1, "number": 1},
+        chunks={},
+    )
+    res1 = ds1.data_vars["msl"].load()
+
+    ds2 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        chunks={},
+    )
+    res2 = ds2.data_vars["msl"].load()
+
+    assert (res1 - res2).shape == (2, 3, 2, 451, 900)
+    assert (res1 == res2).all()
+
+
 def test_cds_era5_single_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
     da = ds.data_vars["msl"]
@@ -44,7 +66,13 @@ def test_cds_era5_single_time() -> None:
 
 
 def test_cds_era5_small_slice_time() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        chunks={},
+        request_chunks={"step": 1, "number": 1},
+    )
     da = ds.data_vars["msl"]
 
     time = datetime.date.today() - datetime.timedelta(days=1)
@@ -60,7 +88,13 @@ def test_cds_era5_small_slice_time() -> None:
 
 
 def test_cds_era5_small_step() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        chunks={},
+        request_chunks={"step": 1, "number": 1},
+    )
     da = ds.data_vars["msl"]
 
     datetime.date.today() - datetime.timedelta(days=1)
@@ -75,7 +109,14 @@ def test_cds_era5_small_step() -> None:
 
 
 def test_cds_era5_small_slice_step() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", client="ecmwf-opendata")  # type: ignore
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        chunks={},
+        request_chunks={"step": 1, "number": 1},
+    )
+
     da = ds.data_vars["msl"]
 
     datetime.date.today() - datetime.timedelta(days=1)

@@ -35,6 +35,25 @@ def test_open_dataset() -> None:
     LOGGER.info(res)
 
 
+def test_compare_chunked_no_chunked() -> None:
+    ds1 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"leadtime_hour": 1, "time": 1},
+        chunks={},
+    )
+    res1 = ds1.data_vars["2m_temperature"].load()
+
+    ds2 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        chunks={},
+    )
+    res2 = ds2.data_vars["2m_temperature"].load()
+
+    assert res1.equals(res2)
+
+
 def test_cds_seasonal_single_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
     da = ds.data_vars["2m_temperature"]
