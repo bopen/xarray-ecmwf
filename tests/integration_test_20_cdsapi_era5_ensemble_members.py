@@ -23,6 +23,16 @@ def test_open_dataset() -> None:
     LOGGER.info(res)
 
 
+def test_compare_chunked_no_chunked() -> None:
+    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
+    da1 = ds1.data_vars["2m_temperature"]
+
+    ds2 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da2 = ds2.data_vars["2m_temperature"]
+
+    assert da1.equals(da2)
+
+
 def test_cds_era5_single_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
