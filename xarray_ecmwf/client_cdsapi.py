@@ -67,7 +67,7 @@ class CdsapiRequestChunker:
         request_coord_name: str,
         coord_name: str,
         indexer_kwargs: dict["str", Any] = {},
-        dtype="int32",
+        dtype: str = "int32",
     ) -> None:
         if request_coord_name in self.request_chunks:
             if isinstance(self.request.get(request_coord_name), list):
