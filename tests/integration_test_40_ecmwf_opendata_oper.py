@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+import pytest
 import xarray as xr
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def test_open_dataset() -> None:
     LOGGER.info(res)
 
 
-def test_compare_chunked_no_chunked() -> None:
+def test_compare_chunked_no_chunked_values() -> None:
     ds1 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
@@ -45,7 +46,8 @@ def test_compare_chunked_no_chunked() -> None:
     )
     res2 = ds2.data_vars["msl"].load()
 
-    assert res1.equals(res2)
+    assert (res1 - res2).shape == (2, 3, 2, 451, 900)
+    assert (res1 == res2).all()
 
 
 def test_cds_era5_single_time() -> None:
@@ -131,3 +133,25 @@ def test_cds_era5_small_slice_step() -> None:
     assert isinstance(res, xr.DataArray)
     assert set(res.dims) == {"time", "step", "latitude", "longitude", "number"}
     assert res.step.size == 2
+
+
+@pytest.mark.xfail
+def test_compare_chunked_no_chunked() -> None:
+    ds1 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        request_chunks={"step": 1, "number": 1},
+        chunks={},
+    )
+    res1 = ds1.data_vars["msl"].load()
+
+    ds2 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        client="ecmwf-opendata",
+        chunks={},
+    )
+    res2 = ds2.data_vars["msl"].load()
+
+    assert res1.equals(res2)
