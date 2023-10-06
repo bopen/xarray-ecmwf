@@ -95,7 +95,7 @@ class CdsapiRequestChunker:
         self.chunk_requests = {}
         self.chunked_coords = {}
 
-        if "time" in self.request_chunks:
+        if "time" in self.request:
             if (
                 isinstance(self.request.get("date"), list)
                 or isinstance(self.request.get("year"), list)
