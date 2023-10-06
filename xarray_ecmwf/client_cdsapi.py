@@ -159,9 +159,7 @@ class CdsapiRequestChunker:
             da = list(sample_ds.data_vars.values())[0]
             coords: dict[str, Any] = {}
             # ensure order
-            print(COORDINATES_ORDER)
             for name in COORDINATES_ORDER:
-                print(list(coords))
                 if name in chunked_request_coords:
                     coords[name] = chunked_request_coords[name]
                 elif name in da.dims:
@@ -253,7 +251,6 @@ class CdsapiRequestChunker:
         ) as ds:
             da = list(ds.data_vars.values())[0]
             da = self.ensure_dims_order(da)
-            # XXX: check that the dimensions are in the correct order
 
             axis = []
             dims = []
