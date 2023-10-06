@@ -221,30 +221,30 @@ class CdsapiRequestChunker:
         chunks_requests: dict[str, Any] = {}
         selection = dict(zip(self.dims, key))
         indices = {}
-        for dim, k in chunks_key.items():
-            if isinstance(k, slice):
-                if k.start is None:
+        for dim, request_key in chunks_key.items():
+            if isinstance(request_key, slice):
+                if request_key.start is None:
                     index = 0
                 else:
-                    index = self.find_start(dim, k.start)
+                    index = self.find_start(dim, request_key.start)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
                 # compute relative index
-                if k.start is None:
+                if request_key.start is None:
                     start = None
                 else:
-                    start = k.start - self.chunk_requests[dim][index][0]
-                if k.stop is None:
+                    start = request_key.start - self.chunk_requests[dim][index][0]
+                if request_key.stop is None:
                     stop = None
                 else:
-                    stop = k.stop - self.chunk_requests[dim][index][0]
-                selection[dim] = slice(start, stop, k.step)
+                    stop = request_key.stop - self.chunk_requests[dim][index][0]
+                selection[dim] = slice(start, stop, request_key.step)
 
-            elif isinstance(k, int):
-                index = self.find_start(dim, k)
+            elif isinstance(request_key, int):
+                index = self.find_start(dim, request_key)
                 chunks_requests.update(**self.chunk_requests[dim][index][1])
-                selection[dim] = k - self.chunk_requests[dim][index][0]
+                selection[dim] = request_key - self.chunk_requests[dim][index][0]
             else:
-                raise ValueError(f"key type {type(k)} not supported")
+                raise ValueError(f"key type {type(request_key)} not supported")
             indices[dim] = index
 
         field_request = self.build_requests(chunks_requests)
