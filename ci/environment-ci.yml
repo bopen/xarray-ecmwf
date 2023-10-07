@@ -13,9 +13,8 @@ dependencies:
 - sphinx
 - sphinx-autoapi
 # DO NOT EDIT ABOVE THIS LINE, ADD DEPENDENCIES BELOW
-- cdsapi
-- ecmwf-api-client
 - ecmwf-opendata
+- jsonschema
 - pandas-stubs
 - pip
 - pip:
