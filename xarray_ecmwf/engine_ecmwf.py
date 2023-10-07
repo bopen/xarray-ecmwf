@@ -146,7 +146,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 dataset_cacher,
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
-            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)  # type: ignore
+            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
             data_vars[var_name] = var
 
         dataset = xr.Dataset(data_vars, coords, attrs)
