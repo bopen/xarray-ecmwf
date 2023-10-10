@@ -64,7 +64,7 @@ class DatasetCacher:
         override_cache_file: bool | None = None,
         force_valid_time_as_time: bool = False,
     ) -> Iterator[xr.Dataset]:
-        print(f"retriving {request}")
+        LOGGER.info(f"retriving {request}")
         cache_file = self.cache_file
         if override_cache_file is not None:
             cache_file = override_cache_file
