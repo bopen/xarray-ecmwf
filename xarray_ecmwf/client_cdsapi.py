@@ -95,7 +95,7 @@ class CdsapiRequestChunker:
         self.chunk_requests = {}
         self.chunked_coords = {}
 
-        if "time" in self.request_chunks:
+        if "time" in self.request:
             if (
                 isinstance(self.request.get("date"), list)
                 or isinstance(self.request.get("year"), list)
@@ -109,10 +109,10 @@ class CdsapiRequestChunker:
                 ) = client_common.build_chunk_requests(
                     self.request, self.request_chunks
                 )
-                self.chunks["time"] = time_chunk
-                self.chunk_requests["time"] = time_chunk_requests
-                self.chunked_coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
-
+                if len(time_chunk_requests) > 1:
+                    self.chunks["time"] = time_chunk
+                    self.chunk_requests["time"] = time_chunk_requests
+                    self.chunked_coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
         self.maybe_update_coords_and_chunk_info("leadtime_hour", "step")
         self.maybe_update_coords_and_chunk_info("step", "step")
         self.maybe_update_coords_and_chunk_info(
@@ -184,12 +184,23 @@ class CdsapiRequestChunker:
         request.update(**chunk_requests)
         return request
 
-    def find_start(self, dim: str, key: int) -> int:
-        chunk_requests = self.chunk_requests[dim]
-        start_chunks = [chunk[0] for chunk in chunk_requests]
-        # to check
-        out = bisect.bisect(start_chunks, key) - 1
-        return out
+    def find_chunk_index(self, dim: str, key: int) -> int:
+        if key is not None:
+            chunk_requests = self.chunk_requests[dim]
+            start_chunks = [chunk[0] for chunk in chunk_requests]
+            # to check
+            index = bisect.bisect(start_chunks, key)
+        else:
+            index = 0
+        return index
+
+    def compute_chunk_start(self, dim: str, index: int) -> int:
+        assert index >= 0
+        if index == 0:
+            chunk_start = 0
+        elif index > 0:
+            chunk_start = self.chunk_requests[dim][index - 1][0]
+        return chunk_start
 
     def first_chunk_request(self) -> dict[str, Any]:
         request = self.request.copy()
@@ -221,29 +232,28 @@ class CdsapiRequestChunker:
         indices = {}
         for dim, request_key in chunks_key.items():
             if isinstance(request_key, slice):
-                if request_key.start is None:
-                    index = 0
-                else:
-                    index = self.find_start(dim, request_key.start)
-                chunks_requests.update(**self.chunk_requests[dim][index][1])
+                chunk_index = self.find_chunk_index(dim, request_key.start)
+                start_chunk = self.compute_chunk_start(dim, chunk_index)
+                chunks_requests.update(**self.chunk_requests[dim][chunk_index][1])
                 # compute relative index
                 if request_key.start is None:
                     start = None
                 else:
-                    start = request_key.start - self.chunk_requests[dim][index][0]
+                    start = request_key.start - start_chunk
                 if request_key.stop is None:
                     stop = None
                 else:
-                    stop = request_key.stop - self.chunk_requests[dim][index][0]
+                    stop = request_key.stop - start_chunk
                 selection[dim] = slice(start, stop, request_key.step)
 
             elif isinstance(request_key, int):
-                index = self.find_start(dim, request_key)
-                chunks_requests.update(**self.chunk_requests[dim][index][1])
-                selection[dim] = request_key - self.chunk_requests[dim][index][0]
+                chunk_index = self.find_chunk_index(dim, request_key)
+                start_chunk = self.compute_chunk_start(dim, chunk_index)
+                chunks_requests.update(**self.chunk_requests[dim][chunk_index][1])
+                selection[dim] = request_key - start_chunk
             else:
                 raise ValueError(f"key type {type(request_key)} not supported")
-            indices[dim] = index
+            indices[dim] = chunk_index
 
         field_request = self.build_requests(chunks_requests)
         with dataset_cacher.retrieve(
