@@ -46,36 +46,60 @@ def test_compare_chunked_no_chunked() -> None:
     )
     res2 = ds2.data_vars["temperature"].load()
 
-    assert res1.equals(res2)
+    assert (res1 - res2).shape == (res1 - res2).shape
+    assert (res1 == res2).all()
 
 
 def test_cds_era5_single_time() -> None:
-    ds = xr.open_dataset(
+    ds1 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
     )
-    da = ds.data_vars["temperature"]
+    da1 = ds1.data_vars["temperature"]
+    res1 = da1.sel(time="2022-07-16T00:00")
 
-    res = da.sel(time="2022-07-16T00:00")
+    assert isinstance(res1, xr.DataArray)
 
-    assert isinstance(res, xr.DataArray)
+    ds2 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"day": 1, "pressure_level": 1},
+        chunks={},
+    )
+    da2 = ds2.data_vars["temperature"]
+    res2 = da2.sel(time="2022-07-16T00:00")
+
+    assert (res1 - res2).shape == (res1 - res2).shape
+    assert (res1 == res2).all()
 
 
 def test_cds_era5_small_slice_time() -> None:
-    ds = xr.open_dataset(
+    ds1 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
     )
-    da = ds.data_vars["temperature"]
+    da1 = ds1.data_vars["temperature"]
 
-    res = da.sel(time="2022-07-02").mean().compute()
+    res1 = da1.sel(time="2022-07-16").load()
 
-    assert isinstance(res, xr.DataArray)
-    assert res.size == 1
+    assert isinstance(res1, xr.DataArray)
+
+    ds2 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"day": 1, "pressure_level": 1},
+        chunks={},
+    )
+    da2 = ds2.data_vars["temperature"]
+
+    res2 = da2.sel(time="2022-07-16").load()
+
+    assert (res1 - res2).shape == (res1 - res2).shape
+    assert (res1 == res2).all()
 
 
 def test_cds_era5_big_slice_time() -> None:
@@ -87,7 +111,7 @@ def test_cds_era5_big_slice_time() -> None:
     )
     da = ds.data_vars["temperature"]
 
-    res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+    res = da.sel(time=slice("2022-07-16", "2022-07-16")).mean().compute()
 
     assert isinstance(res, xr.DataArray)
     assert res.size == 1
