@@ -114,9 +114,9 @@ def test_build_chunk_request() -> None:
         dtype="str",
     )
     assert chunk == 2
-    assert chunk_request[0][0] == 0
-    assert chunk_request[1][0] == 2
-    assert chunk_request[2][0] == 4
+    assert chunk_request[0][0] == 2
+    assert chunk_request[1][0] == 4
+    assert chunk_request[2][0] == 5
     assert chunk_request[0][1] == {"x": ["a", "b"]}
     assert chunk_request[1][1] == {"x": ["c", "d"]}
     assert chunk_request[2][1] == {"x": ["e"]}
@@ -128,5 +128,5 @@ def test_build_chunk_request() -> None:
         dtype="str",
     )
     assert chunk == 6
-    assert chunk_request[0][0] == 0
+    assert chunk_request[0][0] == 6
     assert chunk_request[0][1] == {"x": ["a", "b", "c", "d", "e", "f"]}

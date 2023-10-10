@@ -25,39 +25,50 @@ def test_open_dataset() -> None:
 
 def test_compare_chunked_no_chunked() -> None:
     ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
-    da1 = ds1.data_vars["2m_temperature"]
+    res1 = ds1.data_vars["2m_temperature"].load()
 
     ds2 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    da2 = ds2.data_vars["2m_temperature"]
+    res2 = ds2.data_vars["2m_temperature"].load()
 
-    assert da1.equals(da2)
+    assert (res2 - res1).shape == res2.shape
+    assert (res2 == res1).all()
 
 
 def test_cds_era5_single_time() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
+    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
+    da1 = ds1.data_vars["2m_temperature"]
+    res1 = da1.sel(time="2022-07-16T00:00").load()
 
-    res = da.sel(time="2022-07-16T00:00").mean().compute()
+    assert isinstance(res1, xr.DataArray)
 
-    assert isinstance(res, xr.DataArray)
-    assert res.size == 1
+    ds2 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da2 = ds2.data_vars["2m_temperature"]
+    res2 = da2.sel(time="2022-07-16T00:00").load()
+
+    assert (res2 - res1).shape == res2.shape
+    assert (res2 == res1).all()
 
 
 def test_cds_era5_small_slice_time() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
+    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
+    da1 = ds1.data_vars["2m_temperature"]
+    res1 = da1.sel(time="2022-07-01").load()
 
-    res = da.sel(time="2022-07-02").mean().compute()
+    assert isinstance(res1, xr.DataArray)
 
-    assert isinstance(res, xr.DataArray)
-    assert res.size == 1
+    ds2 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
+    da2 = ds2.data_vars["2m_temperature"]
+    res2 = da2.sel(time="2022-07-01").load()
+
+    assert (res2 - res1).shape == res2.shape
+    assert (res2 == res1).all()
 
 
 def test_cds_era5_big_slice_time() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
-    res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
+    res = da.sel(time=slice("2022-07-01", "2022-07-18")).mean().compute()
 
     assert isinstance(res, xr.DataArray)
     assert res.size == 1
