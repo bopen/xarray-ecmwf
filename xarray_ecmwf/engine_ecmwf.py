@@ -53,10 +53,6 @@ class DatasetCacher:
     cache_file: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
-    def __attrs_post_init__(self) -> None:
-        if not os.path.isdir(self.cache_folder):
-            os.mkdir(self.cache_folder)
-
     @contextlib.contextmanager
     def retrieve(
         self,
@@ -75,6 +71,9 @@ class DatasetCacher:
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
         path = os.path.join(self.cache_folder, filename)
+
+        if not os.path.isdir(self.cache_folder):
+            os.mkdir(self.cache_folder)
 
         with xr.backends.locks.get_write_lock(filename):  # type: ignore
             if not os.path.exists(path):
