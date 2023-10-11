@@ -62,11 +62,11 @@ def build_chunks_header_requests(
     chunk_requests = []
     request_chunks_dim = request_chunks.get(dim, len(request[dim]))
     istart = 0
-    while istart < len(request[dim]):
+    while istart <= len(request[dim]):
         istop = min(istart + request_chunks_dim, len(request[dim]))
         indices = range(istart, istop)
         values = [request[dim][k] for k in indices]
-        chunk_requests.append((istop, {dim: values}))
+        chunk_requests.append((istart, {dim: values}))
         istart += request_chunks_dim
     coord = np.array(request[dim], dtype=dtype)
     return coord, request_chunks_dim, chunk_requests
@@ -87,14 +87,6 @@ def build_chunk_date_requests(
     start = None
 
     for date in pd.date_range(date_start_str, date_stop_str):
-        for time in request["time"]:
-            assert len(time) == 5
-            try:
-                datetime = np.datetime64(f"{date.date()}T{time}", "ns")
-            except ValueError:
-                break
-            times.append(datetime)
-
         if "day" in request_chunks and (
             start is None or date - timedelta_days == start
         ):
@@ -107,6 +99,15 @@ def build_chunk_date_requests(
                     {"date": f"{start.date()}/{stop.date()}"},
                 )
             )
+
+        for time in request["time"]:
+            assert len(time) == 5
+            try:
+                datetime = np.datetime64(f"{date.date()}T{time}", "ns")
+            except ValueError as ex:
+                print(ex)
+                break
+            times.append(datetime)
 
     if len(chunk_requests) == 0:
         chunk_requests = [(0, {})]
@@ -126,6 +127,7 @@ def build_chunk_ymd_requests(
         for month in request["month"]:
             assert len(month) == 2
             for day in request["day"]:
+                start = len(times)
                 assert len(day) == 2
                 for time in request["time"]:
                     assert len(time) == 5
@@ -139,7 +141,7 @@ def build_chunk_ymd_requests(
                         if request_chunks["day"] != 1:
                             raise ValueError("split on day values != 1 not supported")
                         chunk_requests.append(
-                            (len(times), {"year": year, "month": month, "day": day})
+                            (start, {"year": year, "month": month, "day": day})
                         )
 
     if len(chunk_requests) == 0:

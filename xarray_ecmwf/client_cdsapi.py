@@ -186,21 +186,12 @@ class CdsapiRequestChunker:
 
     def find_chunk_index(self, dim: str, key: int) -> int:
         if key is not None:
-            chunk_requests = self.chunk_requests[dim]
-            start_chunks = [chunk[0] for chunk in chunk_requests]
+            start_chunks = [chunk[0] for chunk in self.chunk_requests[dim]]
             # to check
-            index = bisect.bisect(start_chunks, key)
+            index = bisect.bisect(start_chunks, key) - 1
         else:
             index = 0
         return index
-
-    def compute_chunk_start(self, dim: str, index: int) -> int:
-        assert index >= 0
-        if index == 0:
-            chunk_start = 0
-        elif index > 0:
-            chunk_start = self.chunk_requests[dim][index - 1][0]
-        return chunk_start
 
     def first_chunk_request(self) -> dict[str, Any]:
         request = self.request.copy()
@@ -233,7 +224,7 @@ class CdsapiRequestChunker:
         for dim, request_key in chunks_key.items():
             if isinstance(request_key, slice):
                 chunk_index = self.find_chunk_index(dim, request_key.start)
-                start_chunk = self.compute_chunk_start(dim, chunk_index)
+                start_chunk = self.chunk_requests[dim][chunk_index][0]
                 chunks_requests.update(**self.chunk_requests[dim][chunk_index][1])
                 # compute relative index
                 if request_key.start is None:
@@ -248,7 +239,7 @@ class CdsapiRequestChunker:
 
             elif isinstance(request_key, int):
                 chunk_index = self.find_chunk_index(dim, request_key)
-                start_chunk = self.compute_chunk_start(dim, chunk_index)
+                start_chunk = self.chunk_requests[dim][chunk_index][0]
                 chunks_requests.update(**self.chunk_requests[dim][chunk_index][1])
                 selection[dim] = request_key - start_chunk
             else:
