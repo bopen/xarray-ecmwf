@@ -62,7 +62,7 @@ def build_chunks_header_requests(
     chunk_requests = []
     request_chunks_dim = request_chunks.get(dim, len(request[dim]))
     istart = 0
-    while istart <= len(request[dim]):
+    while istart < len(request[dim]):
         istop = min(istart + request_chunks_dim, len(request[dim]))
         indices = range(istart, istop)
         values = [request[dim][k] for k in indices]
