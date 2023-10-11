@@ -42,7 +42,7 @@ def test_compare_chunked_no_chunked() -> None:
     ds2 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
-        request_chunks={"day": 2, "pressure_level": 1},
+        request_chunks={"day": 1, "pressure_level": 2},
         chunks={},
     )
     res2 = ds2.data_vars["temperature"].load()
@@ -76,14 +76,25 @@ def test_cds_era5_single_time() -> None:
     ds2 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
-        request_chunks={"day": 1, "pressure_level": 1},
+        request_chunks={"day": 1, "pressure_level": 2},
         chunks={},
     )
     da2 = ds2.data_vars["temperature"]
     res2 = da2.sel(time="2022-07-16T00:00")
 
-    assert (res1 - res2).shape == res2.shape
-    assert (res1 == res2).all()
+    ds3 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        chunks={},
+    )
+    da3 = ds3.data_vars["temperature"]
+    res3 = da3.sel(time="2022-07-16T00:00")
+
+    assert (res1 - res3).shape == res3.shape
+    assert (res1 == res3).all()
+
+    assert (res2 - res3).shape == res3.shape
+    assert (res2 == res3).all()
 
 
 def test_cds_era5_small_slice_time() -> None:
