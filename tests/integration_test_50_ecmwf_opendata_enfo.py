@@ -39,16 +39,16 @@ def test_compare_chunked_no_chunked_values() -> None:
     )
     res1 = ds1.data_vars["msl"].load()
 
-    ds2 = xr.open_dataset(
+    ds0 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         client="ecmwf-opendata",
         chunks={},
     )
-    res2 = ds2.data_vars["msl"].load()
+    res0 = ds0.data_vars["msl"].load()
 
-    assert (res1 - res2).shape == (2, 3, 2, 451, 900)
-    assert (res1 == res2).all()
+    assert (res1 - res0).shape == (2, 3, 2, 451, 900)
+    assert (res1 == res0).all()
 
 
 def test_cds_era5_single_time() -> None:

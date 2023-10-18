@@ -1,3 +1,4 @@
+import calendar
 from typing import Any, ContextManager, Protocol
 
 import numpy as np
@@ -115,10 +116,90 @@ def build_chunk_date_requests(
     return np.array(times), len(request["time"]) * chunk_days, chunk_requests
 
 
+def generate_ymd_coordinates(
+    request: dict[str, Any]
+) -> np.typing.NDArray[np.datetime64]:
+    times: list[np.datetime64] = []
+    for year in request["year"]:
+        assert len(year) == 4
+        for month in request["month"]:
+            assert len(month) == 2
+            ndays = calendar.monthrange(int(year), int(month))[1]
+            for day in request["day"]:
+                assert len(day) == 2
+                if int(day) > ndays:
+                    break
+                for time in request["time"]:
+                    assert len(time) == 5
+                    datetime = np.datetime64(f"{year}-{month}-{day}T{time}", "ns")
+                    times.append(datetime)
+    return np.array(times)
+
+
+def build_chunk_ymd_month_requests(
+    request: dict[str, Any], request_chunks: dict[str, int]
+) -> tuple[
+    np.typing.NDArray[np.datetime64],
+    int | tuple[int, ...],
+    list[tuple[int, dict[str, Any]]],
+]:
+    if request_chunks["month"] != 1:
+        raise ValueError("split on day values != 1 not supported")
+
+    datetimes: list[np.datetime64] = []
+    chunk_requests = []
+    chunks = []
+    for year in request["year"]:
+        assert len(year) == 4
+        for month in request["month"]:
+            chunk = 0
+            assert len(month) == 2
+            ndays = calendar.monthrange(int(year), int(month))[1]
+            start = len(datetimes)
+            days = []
+            for day in request["day"]:
+                assert len(day) == 2
+                if int(day) > ndays:
+                    break
+                days.append(day)
+                for time in request["time"]:
+                    assert len(time) == 5
+                    chunk += 1
+                    datetime = np.datetime64(f"{year}-{month}-{day}T{time}", "ns")
+                    datetimes.append(datetime)
+            chunks.append(chunk)
+
+            chunk_requests.append((start, {"year": year, "month": month, "day": days}))
+    return np.array(datetimes), tuple(chunks), chunk_requests
+
+
 def build_chunk_ymd_requests(
     request: dict[str, Any], request_chunks: dict[str, int]
+) -> tuple[
+    np.typing.NDArray[np.datetime64],
+    int | tuple[int, ...],
+    list[tuple[int, dict[str, Any]]],
+]:
+    time_chunk_keys = list(set(request_chunks).intersection(["month", "day", "year"]))
+    if len(time_chunk_keys) == 0:
+        return generate_ymd_coordinates(request), len(request), [(0, {})]
+
+    assert len(time_chunk_keys) == 1
+    time_chunk_key = time_chunk_keys[0]
+    assert time_chunk_key in set(["day", "month"])
+
+    if time_chunk_key == "month":
+        out = build_chunk_ymd_month_requests(request, request_chunks)
+    elif time_chunk_key == "day":
+        out = build_chunk_ymd_day_requests(request, request_chunks)
+    return out
+
+
+def build_chunk_ymd_day_requests(
+    request: dict[str, Any], request_chunks: dict[str, int]
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
-    assert set(request_chunks).intersection(["month", "day", "year"]) <= set(["day"])
+    if request_chunks["day"] != 1:
+        raise ValueError("split on day values != 1 not supported")
 
     times: list[np.datetime64] = []
     chunk_requests = []
@@ -137,22 +218,22 @@ def build_chunk_ymd_requests(
                         break
                     times.append(datetime)
                 else:
-                    if "day" in request_chunks:
-                        if request_chunks["day"] != 1:
-                            raise ValueError("split on day values != 1 not supported")
-                        chunk_requests.append(
-                            (start, {"year": year, "month": month, "day": day})
-                        )
-
-    if len(chunk_requests) == 0:
-        chunk_requests = [(0, {})]
+                    if request_chunks["day"] != 1:
+                        raise ValueError("split on day values != 1 not supported")
+                    chunk_requests.append(
+                        (start, {"year": year, "month": month, "day": day})
+                    )
 
     return np.array(times), len(request["time"]), chunk_requests
 
 
-def build_chunk_requests(
+def build_time_chunk_requests(
     request: dict[str, Any], request_chunks: dict[str, int]
-) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
+) -> tuple[
+    np.typing.NDArray[np.datetime64],
+    int | tuple[int, ...],
+    list[tuple[int, dict[str, Any]]],
+]:
     if "year" in request:
         time, time_chunk, time_chunk_requests = build_chunk_ymd_requests(
             request, request_chunks
