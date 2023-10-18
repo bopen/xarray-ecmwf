@@ -41,6 +41,7 @@ SUPPORTED_REQUEST_DIMENSIONS = [
     "leadtime_hour",
     "step",
     "pressure_level",
+    "levelist",
 ]
 
 
@@ -117,6 +118,9 @@ class CdsapiRequestChunker:
         self.maybe_update_coords_and_chunk_info("step", "step")
         self.maybe_update_coords_and_chunk_info(
             "pressure_level", "isobaricInhPa", indexer_kwargs={"units": "hPa"}
+        )
+        self.maybe_update_coords_and_chunk_info(
+            "levelist", "isobaricInhPa", indexer_kwargs={"units": "hPa"}
         )
         # `number` is last because some CDS datasets do not allow to select
         # ensemble members in the request and always return all of them.
