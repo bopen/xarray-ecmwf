@@ -73,7 +73,7 @@ class DatasetCacher:
         path = os.path.join(self.cache_folder, filename)
 
         if not os.path.isdir(self.cache_folder):
-            os.mkdir(self.cache_folder)
+            os.makedirs(self.cache_folder)
 
         with xr.backends.locks.get_write_lock(filename):  # type: ignore
             if not os.path.exists(path):
