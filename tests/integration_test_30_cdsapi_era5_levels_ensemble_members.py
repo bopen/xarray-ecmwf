@@ -45,20 +45,37 @@ def test_compare_chunked_no_chunked() -> None:
         request_chunks={"day": 1, "pressure_level": 2},
         chunks={},
     )
+
+    assert ds2.chunks["time"] == (2, 2, 2, 2)
+
     res2 = ds2.data_vars["temperature"].load()
 
     ds3 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
+        request_chunks={"month": 1, "pressure_level": 2},
         chunks={},
     )
+
+    assert ds3.chunks["time"] == (4, 4)
+
     res3 = ds3.data_vars["temperature"].load()
 
-    assert (res1 - res3).shape == res3.shape
-    assert (res1 == res3).all()
+    ds0 = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        chunks={},
+    )
+    res0 = ds0.data_vars["temperature"].load()
 
-    assert (res2 - res3).shape == res3.shape
-    assert (res2 == res3).all()
+    assert (res1 - res0).shape == res0.shape
+    assert (res1 == res0).all()
+
+    assert (res2 - res0).shape == res0.shape
+    assert (res2 == res0).all()
+
+    assert (res3 - res0).shape == res0.shape
+    assert (res3 == res0).all()
 
 
 def test_cds_era5_single_time() -> None:
@@ -68,8 +85,7 @@ def test_cds_era5_single_time() -> None:
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["temperature"]
-    res1 = da1.sel(time="2022-07-16T00:00")
+    res1 = ds1.data_vars["temperature"].sel(time="2022-07-16T00:00")
 
     assert isinstance(res1, xr.DataArray)
 
@@ -79,22 +95,20 @@ def test_cds_era5_single_time() -> None:
         request_chunks={"day": 1, "pressure_level": 2},
         chunks={},
     )
-    da2 = ds2.data_vars["temperature"]
-    res2 = da2.sel(time="2022-07-16T00:00")
+    res2 = ds2.data_vars["temperature"].sel(time="2022-07-16T00:00")
 
-    ds3 = xr.open_dataset(
+    ds0 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         chunks={},
     )
-    da3 = ds3.data_vars["temperature"]
-    res3 = da3.sel(time="2022-07-16T00:00")
+    res0 = ds0.data_vars["temperature"].sel(time="2022-07-16T00:00")
 
-    assert (res1 - res3).shape == res3.shape
-    assert (res1 == res3).all()
+    assert (res1 - res0).shape == res0.shape
+    assert (res1 == res0).all()
 
-    assert (res2 - res3).shape == res3.shape
-    assert (res2 == res3).all()
+    assert (res2 - res0).shape == res0.shape
+    assert (res2 == res0).all()
 
 
 def test_cds_era5_small_slice_time() -> None:
@@ -110,18 +124,16 @@ def test_cds_era5_small_slice_time() -> None:
 
     assert isinstance(res1, xr.DataArray)
 
-    ds2 = xr.open_dataset(
+    ds0 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         request_chunks={"day": 1, "pressure_level": 1},
         chunks={},
     )
-    da2 = ds2.data_vars["temperature"]
+    res0 = ds0.data_vars["temperature"].sel(time="2022-07-16").load()
 
-    res2 = da2.sel(time="2022-07-16").load()
-
-    assert (res1 - res2).shape == res2.shape
-    assert (res1 == res2).all()
+    assert (res1 - res0).shape == res0.shape
+    assert (res1 == res0).all()
 
 
 def test_cds_era5_big_slice_time() -> None:

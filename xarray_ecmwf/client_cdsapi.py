@@ -60,7 +60,7 @@ class CdsapiRequestChunker:
             request_dimensions[dim] = self.request[dim]
         return request_dimensions
 
-    def get_chunks(self) -> dict[str, int]:
+    def get_chunks(self) -> dict[str, int | tuple[int, ...]]:
         return self.chunks
 
     def maybe_update_coords_and_chunk_info(
@@ -107,7 +107,7 @@ class CdsapiRequestChunker:
                     time,
                     time_chunk,
                     time_chunk_requests,
-                ) = client_common.build_chunk_requests(
+                ) = client_common.build_time_chunk_requests(
                     self.request, self.request_chunks
                 )
                 if len(time_chunk_requests) > 1:
