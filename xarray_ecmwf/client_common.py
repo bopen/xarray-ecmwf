@@ -116,7 +116,7 @@ def build_chunk_date_requests(
     return np.array(times), len(request["time"]) * chunk_days, chunk_requests
 
 
-def generate_ymd_coordinates(
+def build_ymd_coordinates_request(
     request: dict[str, Any]
 ) -> np.typing.NDArray[np.datetime64]:
     times: list[np.datetime64] = []
@@ -182,7 +182,7 @@ def build_chunk_ymd_requests(
 ]:
     time_chunk_keys = list(set(request_chunks).intersection(["month", "day", "year"]))
     if len(time_chunk_keys) == 0:
-        return generate_ymd_coordinates(request), len(request), [(0, {})]
+        return build_ymd_coordinates_request(request), len(request), [(0, {})]
 
     assert len(time_chunk_keys) == 1
     time_chunk_key = time_chunk_keys[0]
