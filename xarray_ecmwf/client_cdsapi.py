@@ -49,6 +49,10 @@ class CdsapiRequestChunker:
     request: dict[str, Any]
     request_chunks: dict[str, Any]
 
+    chunks: dict[str, int | list[int]] = None
+    chunk_requests: dict[str, int] | None = None
+    variables: dict[str, str] | None = None
+
     def get_request_dimensions(self) -> dict[str, list[Any]]:
         request_dimensions: dict[str, list[Any]] = {}
         for dim in SUPPORTED_REQUEST_DIMENSIONS:
@@ -126,6 +130,7 @@ class CdsapiRequestChunker:
             "number",
             dtype="int64",
         )
+        self.request_chunked_dims = list(self.chunked_coords)
         return self.chunked_coords.copy()
 
     def is_reanalysis(self, sample_ds: xr.Dataset) -> bool:
@@ -141,16 +146,41 @@ class CdsapiRequestChunker:
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: client_common.DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
-        chunked_request_coords = self.compute_chunked_request_coords()
-        self.request_chunked_dims = list(self.chunked_coords)
+        self.compute_chunked_request_coords()
+
+        if "variable" in self.request:
+            var_field = "variable"
+        elif "param" in self.request:
+            var_field = "param"
+
         sample_request = self.first_chunk_request()
-        # HACK: this is a horrible work-around for ERA5 derived datasets that
-        #   are indexed by "time" and "step" when the request has no "step"
+        sample_request[var_field] = [sample_request[var_field][0]]
+
         self.force_valid_time_as_time = False
         with dataset_cacher.retrieve(
             sample_request, override_cache_file=True
         ) as sample_ds:
             self.force_valid_time_as_time = self.is_reanalysis(sample_ds)
+
+        for variable in self.request[var_field]:
+            sample_request[var_field] = [variable]
+            self.get_coords_attrs_and_dtype(sample_request, dataset_cacher)
+
+    def sort_coordinates(self, coords):
+        out_coords = {}
+        for name in COORDINATES_ORDER:
+            out_coords[name] = coords[name]
+        out_coords.update(coords)
+        return out_coords
+
+    def get_var_coords_attrs_and_dtype(
+        self,
+        sample_request: dict[str, Any],
+        dataset_cacher: client_common.DatasetCacherProtocol,
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
+        # HACK: this is a horrible work-around for ERA5 derived datasets that
+        #   are indexed by "time" and "step" when the request has no "step"
+
         with dataset_cacher.retrieve(
             sample_request,
             override_cache_file=True,
@@ -160,8 +190,8 @@ class CdsapiRequestChunker:
             coords: dict[str, Any] = {}
             # ensure order
             for name in COORDINATES_ORDER:
-                if name in chunked_request_coords:
-                    coords[name] = chunked_request_coords[name]
+                if name in self.chunked_coords:
+                    coords[name] = self.chunked_coords[name]
                 elif name in da.dims:
                     assert isinstance(name, str)
                     coords[name] = da.coords[name]
@@ -170,7 +200,7 @@ class CdsapiRequestChunker:
                     assert isinstance(name, str)
                     coords[name] = da.coords[name]
             self.dims = list(coords)
-            return coords, sample_ds.attrs, da.attrs, da.dtype
+            return coords, da.attrs, da.dtype
 
     def get_variables(self) -> list[str]:
         if "variable" in self.request:
