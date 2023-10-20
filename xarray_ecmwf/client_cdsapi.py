@@ -146,7 +146,7 @@ class CdsapiRequestChunker:
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: client_common.DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
-        self.compute_chunked_request_coords()
+        chunked_coords = self.compute_chunked_request_coords()
 
         if "variable" in self.request:
             var_field = "variable"
@@ -162,16 +162,34 @@ class CdsapiRequestChunker:
         ) as sample_ds:
             self.force_valid_time_as_time = self.is_reanalysis(sample_ds)
 
+        coords = {}
+        self.vars_attrs = {}
+        self.vars_dtypes = {}
+        self.vars_names = {}
+
         for variable in self.request[var_field]:
             sample_request[var_field] = [variable]
-            self.get_coords_attrs_and_dtype(sample_request, dataset_cacher)
+            (
+                coords_,
+                attrs,
+                var_attrs,
+                var_dtype,
+                var_name,
+            ) = self.get_var_coords_attrs_and_dtype(sample_request, dataset_cacher)
+            coords.update(coords_)
+            self.vars_attrs[variable] = var_attrs
+            self.vars_dtypes[variable] = var_dtype
+            self.vars_names[variable] = var_name
 
-    def sort_coordinates(self, coords):
-        out_coords = {}
-        for name in COORDINATES_ORDER:
-            out_coords[name] = coords[name]
-        out_coords.update(coords)
-        return out_coords
+        coords.update(chunked_coords)
+        self.coords = {}
+        for coord_name in COORDINATES_ORDER:
+            if coord_name in coords:
+                self.coords[coord_name] = coords[coord_name]
+        self.coords.update(coords)
+        self.dims = list(self.coords)
+
+        return self.coords, attrs, self.vars_attrs, self.vars_dtypes
 
     def get_var_coords_attrs_and_dtype(
         self,
@@ -189,18 +207,12 @@ class CdsapiRequestChunker:
             da = list(sample_ds.data_vars.values())[0]
             coords: dict[str, Any] = {}
             # ensure order
-            for name in COORDINATES_ORDER:
-                if name in self.chunked_coords:
-                    coords[name] = self.chunked_coords[name]
-                elif name in da.dims:
-                    assert isinstance(name, str)
+
+            for name in da.coords:
+                assert isinstance(name, str)
+                if name in da.dims:
                     coords[name] = da.coords[name]
-            for name in da.coords:  # type: ignore
-                if name not in coords and name in da.dims:
-                    assert isinstance(name, str)
-                    coords[name] = da.coords[name]
-            self.dims = list(coords)
-            return coords, da.attrs, da.dtype
+        return coords, sample_ds.attrs, da.attrs, da.dtype, da.name
 
     def get_variables(self) -> list[str]:
         if "variable" in self.request:

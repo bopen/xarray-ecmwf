@@ -140,12 +140,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         for var_name in request_chunker.get_variables():
             var_data = ECMWFBackendArray(
                 shape,
-                dtype,
+                dtype[var_name],
                 request_chunker,
                 dataset_cacher,
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
-            var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
+            var = xr.Variable(dims, lazy_var_data, var_attrs[var_name], encoding)
             data_vars[var_name] = var
 
         dataset = xr.Dataset(data_vars, coords, attrs)
