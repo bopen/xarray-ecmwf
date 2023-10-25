@@ -4,7 +4,6 @@ import os
 from typing import Any, Iterable, Iterator
 
 import attrs
-import cf2cdm
 import numpy as np
 import xarray as xr
 
@@ -49,7 +48,6 @@ class ECMWFBackendArray(xr.backends.BackendArray):
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
     cfgrib_kwargs: dict[str, Any] = {}
-    translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS}
     cache_file: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
@@ -112,7 +110,6 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
         cfgrib_kwargs: dict[str, Any] = {},
-        translate_coords_kwargs: dict[str, Any] | None = {"coord_model": cf2cdm.CDS},
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
@@ -121,9 +118,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
 
         request_client = request_client_class(client_kwargs)
         request_chunker = request_chunker_class(filename_or_obj, request_chunks)
-        dataset_cacher = DatasetCacher(
-            request_client, cfgrib_kwargs, translate_coords_kwargs, **cache_kwargs
-        )
+        dataset_cacher = DatasetCacher(request_client, cfgrib_kwargs, **cache_kwargs)
         LOGGER.info(request_chunker.get_request_dimensions())
 
         coords, attrs, var_attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
