@@ -49,6 +49,7 @@ SUPPORTED_REQUEST_DIMENSIONS = [
 class CdsapiRequestChunker:
     request: dict[str, Any]
     request_chunks: dict[str, Any]
+    merge_date_time: bool = True
 
     def get_request_dimensions(self) -> dict[str, list[Any]]:
         request_dimensions: dict[str, list[Any]] = {}
@@ -81,7 +82,7 @@ class CdsapiRequestChunker:
                 )
                 self.chunks[coord_name] = coord_chunk
                 self.chunk_requests[coord_name] = coord_chunk_request
-                if coord_name in ("step"):
+                if coord_name == "step":
                     self.chunked_coords[coord_name] = xr.IndexVariable(  # type: ignore
                         "step", coord * np.timedelta64(1, "h"), **indexer_kwargs
                     )
@@ -103,12 +104,16 @@ class CdsapiRequestChunker:
                 or isinstance(self.request.get("month"), list)
                 or isinstance(self.request.get("day"), list)
             ):
+                override_time = {}
+                if self.merge_date_time is False:
+                    override_time["time"] = ["00:00"]
+                print(override_time)
                 (
                     time,
                     time_chunk,
                     time_chunk_requests,
                 ) = client_common.build_time_chunk_requests(
-                    self.request, self.request_chunks
+                    self.request | override_time, self.request_chunks
                 )
                 if len(time_chunk_requests) > 1:
                     self.chunks["time"] = time_chunk
@@ -132,33 +137,15 @@ class CdsapiRequestChunker:
         )
         return self.chunked_coords.copy()
 
-    def is_reanalysis(self, sample_ds: xr.Dataset) -> bool:
-        out = False
-        if (
-            "leadtime_hour" not in self.request
-            and "step" not in self.request
-            and "step" in sample_ds.dims
-        ):
-            out = True
-        return out
-
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: client_common.DatasetCacherProtocol
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
         chunked_request_coords = self.compute_chunked_request_coords()
         self.request_chunked_dims = list(self.chunked_coords)
         sample_request = self.first_chunk_request()
-        # HACK: this is a horrible work-around for ERA5 derived datasets that
-        #   are indexed by "time" and "step" when the request has no "step"
-        self.force_valid_time_as_time = False
-        with dataset_cacher.retrieve(
-            sample_request, override_cache_file=True
-        ) as sample_ds:
-            self.force_valid_time_as_time = self.is_reanalysis(sample_ds)
         with dataset_cacher.retrieve(
             sample_request,
             override_cache_file=True,
-            force_valid_time_as_time=self.force_valid_time_as_time,
         ) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
             coords: dict[str, Any] = {}
@@ -186,7 +173,9 @@ class CdsapiRequestChunker:
         retval = {}
         for name in self.request[param]:
             var_request = self.request | {param: [name]}
-            retval[name] = CdsapiRequestChunker(var_request, self.request_chunks)
+            retval[name] = CdsapiRequestChunker(
+                var_request, self.request_chunks, self.merge_date_time
+            )
         return retval
 
     def build_requests(self, chunk_requests: dict[str, Any]) -> dict[str, Any]:
@@ -257,9 +246,7 @@ class CdsapiRequestChunker:
             indices[dim] = chunk_index
 
         field_request = self.build_requests(chunks_requests)
-        with dataset_cacher.retrieve(
-            field_request, force_valid_time_as_time=self.force_valid_time_as_time
-        ) as ds:
+        with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
             da = self.ensure_dims_order(da)
 

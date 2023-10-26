@@ -56,7 +56,6 @@ class DatasetCacher:
         self,
         request: dict[str, Any],
         override_cache_file: bool | None = None,
-        force_valid_time_as_time: bool = False,
     ) -> Iterator[xr.Dataset]:
         LOGGER.info(f"retriving {request}")
         cache_file = self.cache_file
@@ -83,13 +82,7 @@ class DatasetCacher:
                     except Exception:
                         pass
                     raise
-            # HACK: this is a horrible work-around for ERA5 derived datasets that
-            #   are indexed by "time" abd "step" when the request has not "step"
-            if force_valid_time_as_time:
-                cfgrib_kwargs = cfgrib_kwargs | {"time_dims": ("valid_time",)}
             ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
-            if force_valid_time_as_time:
-                ds = ds.swap_dims(valid_time="time")
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             try:
                 yield ds
@@ -110,6 +103,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
         cfgrib_kwargs: dict[str, Any] = {},
+        request_chunker_kwargs: dict[str, Any] = {},
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
@@ -117,7 +111,9 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
         request_client = request_client_class(client_kwargs)
-        request_chunker = request_chunker_class(filename_or_obj, request_chunks)
+        request_chunker = request_chunker_class(
+            filename_or_obj, request_chunks, **request_chunker_kwargs
+        )
         dataset_cacher = DatasetCacher(request_client, cfgrib_kwargs, **cache_kwargs)
         LOGGER.info(request_chunker.get_request_dimensions())
 
