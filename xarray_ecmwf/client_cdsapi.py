@@ -138,7 +138,7 @@ class CdsapiRequestChunker:
 
     def get_coords_attrs_and_dtype(
         self, dataset_cacher: client_common.DatasetCacherProtocol
-    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
+    ) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any], Any]:
         chunked_request_coords = self.compute_chunked_request_coords()
         self.request_chunked_dims = list(self.chunked_coords)
         sample_request = self.first_chunk_request()
@@ -160,7 +160,7 @@ class CdsapiRequestChunker:
                     assert isinstance(name, str)
                     coords[name] = da.coords[name]
             self.dims = list(coords)
-            return coords, sample_ds.attrs, da.attrs, da.dtype
+            return str(da.name), coords, sample_ds.attrs, da.attrs, da.dtype
 
     def get_variables(self) -> dict[str, "CdsapiRequestChunker"]:
         if "variable" in self.request:

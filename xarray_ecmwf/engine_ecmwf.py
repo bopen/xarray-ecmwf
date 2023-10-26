@@ -104,10 +104,11 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         cache_kwargs: dict[str, Any] = {},
         cfgrib_kwargs: dict[str, Any] = {},
         request_chunker_kwargs: dict[str, Any] = {},
+        request_client_class: type[client_common.RequestClientProtocol] | None = None,
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
-        request_client_class = SUPPORTED_CLIENTS[client]
+        request_client_class = request_client_class or SUPPORTED_CLIENTS[client]
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
         request_client = request_client_class(client_kwargs)
@@ -120,6 +121,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         data_vars = {}
         for var_name, var_request_chunker in request_chunker.get_variables().items():
             (
+                name,
                 coords,
                 attrs,
                 var_attrs,
@@ -140,7 +142,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
             var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
-            data_vars[var_name] = var
+            data_vars[name] = var
 
         dataset = xr.Dataset(data_vars, coords, attrs)
         return dataset
