@@ -176,12 +176,18 @@ class CdsapiRequestChunker:
             self.dims = list(coords)
             return coords, sample_ds.attrs, da.attrs, da.dtype
 
-    def get_variables(self) -> list[str]:
+    def get_variables(self) -> dict[str, "CdsapiRequestChunker"]:
         if "variable" in self.request:
-            return list(self.request["variable"])
+            param = "variable"
         elif "param" in self.request:
-            return list(self.request["param"])
-        raise ValueError(f"'variable' parameter not found in {list(self.request)}")
+            param = "param"
+        else:
+            raise ValueError(f"'variable' parameter not found in {list(self.request)}")
+        retval = {}
+        for name in self.request[param]:
+            var_request = self.request | {param: [name]}
+            retval[name] = CdsapiRequestChunker(var_request, self.request_chunks)
+        return retval
 
     def build_requests(self, chunk_requests: dict[str, Any]) -> dict[str, Any]:
         request = self.request.copy()

@@ -121,22 +121,25 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         dataset_cacher = DatasetCacher(request_client, cfgrib_kwargs, **cache_kwargs)
         LOGGER.info(request_chunker.get_request_dimensions())
 
-        coords, attrs, var_attrs, dtype = request_chunker.get_coords_attrs_and_dtype(
-            dataset_cacher
-        )
-        shape = tuple(c.size for c in coords.values())
-        dims = list(coords)
-        encoding = {
-            "preferred_chunks": request_chunker.get_chunks(),
-            "request_chunker": request_chunker,
-        }
-
         data_vars = {}
-        for var_name in request_chunker.get_variables():
+        for var_name, var_request_chunker in request_chunker.get_variables().items():
+            (
+                coords,
+                attrs,
+                var_attrs,
+                dtype,
+            ) = var_request_chunker.get_coords_attrs_and_dtype(dataset_cacher)
+            shape = tuple(c.size for c in coords.values())
+            dims = list(coords)
+            encoding = {
+                "preferred_chunks": var_request_chunker.get_chunks(),
+                "request_chunker": var_request_chunker,
+            }
+
             var_data = ECMWFBackendArray(
                 shape,
                 dtype,
-                request_chunker,
+                var_request_chunker,
                 dataset_cacher,
             )
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
