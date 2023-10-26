@@ -107,7 +107,6 @@ class CdsapiRequestChunker:
                 override_time = {}
                 if self.merge_date_time is False:
                     override_time["time"] = ["00:00"]
-                print(override_time)
                 (
                     time,
                     time_chunk,
