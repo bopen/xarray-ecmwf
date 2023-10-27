@@ -84,7 +84,9 @@ class CdsapiRequestChunker:
                 self.chunk_requests[coord_name] = coord_chunk_request
                 if coord_name == "step":
                     self.chunked_coords[coord_name] = xr.IndexVariable(  # type: ignore
-                        "step", coord * np.timedelta64(1, "h"), **indexer_kwargs
+                        "step",
+                        coord * np.timedelta64(3600000000000, "ns"),
+                        **indexer_kwargs,
                     )
                 else:
                     self.chunked_coords[coord_name] = xr.IndexVariable(  # type: ignore
