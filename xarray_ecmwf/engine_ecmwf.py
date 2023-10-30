@@ -1,7 +1,8 @@
 import contextlib
 import logging
 import os
-from typing import Any, Iterable, Iterator
+import uuid
+from typing import Any, Callable, Iterable, Iterator, Sequence
 
 import attrs
 import numpy as np
@@ -44,6 +45,25 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         return out
 
 
+def robust_save_to_file(saver: Callable, args: Sequence[Any], path: str) -> None:
+    tmp_path = path + "." + str(uuid.uuid4())[:8]
+
+    ex = None
+    try:
+        saver(*args, tmp_path)
+    except Exception:
+        pass
+
+    if ex is not None:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+        raise ex
+
+    os.rename(tmp_path, path)
+
+
 @attrs.define(slots=False)
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
@@ -57,7 +77,7 @@ class DatasetCacher:
         request: dict[str, Any],
         override_cache_file: bool | None = None,
     ) -> Iterator[xr.Dataset]:
-        LOGGER.info(f"retriving {request}")
+        LOGGER.info(f"retrieving {request}")
         cache_file = self.cache_file
         if override_cache_file is not None:
             cache_file = override_cache_file
@@ -72,23 +92,15 @@ class DatasetCacher:
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
-        with xr.backends.locks.get_write_lock(filename):  # type: ignore
-            if not os.path.exists(path):
-                try:
-                    self.request_client.download(result, path)
-                except Exception:
-                    try:
-                        os.remove(path)
-                    except Exception:
-                        pass
-                    raise
-            ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
-            LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
-            try:
-                yield ds
-            finally:
-                if not cache_file:
-                    os.remove(path)
+        if not os.path.exists(path):
+            robust_save_to_file(self.request_client.download, (result,), path)
+        ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
+        LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
+        try:
+            yield ds
+        finally:
+            if not cache_file:
+                os.remove(path)
 
 
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
