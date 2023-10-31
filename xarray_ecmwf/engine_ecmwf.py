@@ -45,7 +45,9 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         return out
 
 
-def robust_save_to_file(saver: Callable, args: Sequence[Any], path: str) -> None:
+def robust_save_to_file(
+    saver: Callable[..., Any], args: Sequence[Any], path: str
+) -> None:
     tmp_path = path + "." + str(uuid.uuid4())[:8]
 
     ex = None
