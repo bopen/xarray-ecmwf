@@ -102,7 +102,10 @@ class DatasetCacher:
             yield ds
         finally:
             if not cache_file:
-                os.remove(path)
+                try:
+                    os.remove(path)
+                except Exception:
+                    logging.exception("While removing a cache file")
 
 
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
