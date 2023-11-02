@@ -54,7 +54,7 @@ def robust_save_to_file(
     try:
         saver(*args, tmp_path)
     except Exception:
-        pass
+        logging.exception("Save failed")
 
     if ex is not None:
         try:
