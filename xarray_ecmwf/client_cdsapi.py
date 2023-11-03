@@ -206,11 +206,10 @@ class CdsapiRequestChunker:
                 dims.append(dim)
         return da.transpose(*dims)
 
-    def get_chunk_values(
+    def get_chunk_requests(
         self,
         key: tuple[int | slice, ...],
-        dataset_cacher: client_common.DatasetCacherProtocol,
-    ) -> np.typing.ArrayLike:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         # XXX: only support `key` that access exactly one chunk
         assert len(key) == len(self.dims)
         chunks_key = {}
@@ -247,6 +246,14 @@ class CdsapiRequestChunker:
             indices[dim] = chunk_index
 
         field_request = self.build_requests(chunks_requests)
+        return field_request, selection
+
+    def get_chunk_values(
+        self,
+        key: tuple[int | slice, ...],
+        dataset_cacher: client_common.DatasetCacherProtocol,
+    ) -> np.typing.ArrayLike:
+        field_request, selection = self.get_chunk_requests(key)
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
             da = self.ensure_dims_order(da)

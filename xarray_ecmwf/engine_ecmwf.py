@@ -149,6 +149,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             encoding = {
                 "preferred_chunks": var_request_chunker.get_chunks(),
                 "request_chunker": var_request_chunker,
+                "request_client": request_client,
             }
 
             var_data = ECMWFBackendArray(
