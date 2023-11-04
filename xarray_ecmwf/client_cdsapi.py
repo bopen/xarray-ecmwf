@@ -247,14 +247,14 @@ class CdsapiRequestChunker:
             indices[dim] = chunk_index
 
         field_request = self.build_requests(chunks_requests)
-        return field_request, selection
+        return field_request, selection, indices
 
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
         dataset_cacher: client_common.DatasetCacherProtocol,
     ) -> np.typing.ArrayLike:
-        field_request, selection = self.get_chunk_requests(key)
+        field_request, selection, indices = self.get_chunk_requests(key)
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
             da = self.ensure_dims_order(da)
@@ -268,5 +268,18 @@ class CdsapiRequestChunker:
 
             da = da.expand_dims(dims, axis=axis)
 
-            out = da.load().isel(selection)
-            return out.values
+            out = da.isel(selection).values
+
+            # horrible workaround for the crazy CDS / MARS convention to return
+            # a short chunk at the start of a dataset (at least on ERA5 and ERA5 Land)
+            if (
+                indices[self.time_dim] == 0
+                and da.coords[self.time_dim].size < self.chunks[self.time_dim]
+            ):
+                fixed = np.empty((self.chunks[self.time_dim],) + out.shape[1:])
+                offset = fixed.shape[0] - out.shape[0]
+                fixed[offset:] = out
+                fixed[:offset] = np.nan
+                out = fixed
+
+            return out
