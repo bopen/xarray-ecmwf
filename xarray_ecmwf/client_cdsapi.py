@@ -210,7 +210,7 @@ class CdsapiRequestChunker:
     def get_chunk_requests(
         self,
         key: tuple[int | slice, ...],
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, int | slice], dict[str, int]]:
         # XXX: only support `key` that access exactly one chunk
         assert len(key) == len(self.dims)
         chunks_key = {}
@@ -276,7 +276,9 @@ class CdsapiRequestChunker:
                 indices[self.time_dim] == 0
                 and da.coords[self.time_dim].size < self.chunks[self.time_dim]
             ):
-                fixed = np.empty((self.chunks[self.time_dim],) + out.shape[1:])
+                expected_time_dim_size = self.chunks[self.time_dim]
+                assert isinstance(expected_time_dim_size, int)
+                fixed = np.empty((expected_time_dim_size,) + out.shape[1:])
                 offset = fixed.shape[0] - out.shape[0]
                 fixed[offset:] = out
                 fixed[:offset] = np.nan
