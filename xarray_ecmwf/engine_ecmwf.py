@@ -17,8 +17,8 @@ SUPPORTED_CLIENTS: dict[str, type[client_common.RequestClientProtocol]] = {
     "ecmwf-opendata": client_ecmwf_opendata.EcmwfOpendataRequestClient,
 }
 SUPPORTED_CHUNKERS: dict[str, type[client_common.RequestChunkerProtocol]] = {
-    "cdsapi": client_cdsapi.CdsapiRequestChunker,
-    "ecmwf-opendata": client_cdsapi.CdsapiRequestChunker,
+    "cdsapi": client_cdsapi.CdsapiRequestChunker,  # type: ignore
+    "ecmwf-opendata": client_cdsapi.CdsapiRequestChunker,  # type: ignore
 }
 
 

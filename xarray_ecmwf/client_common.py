@@ -44,7 +44,7 @@ class RequestChunkerProtocol(Protocol):
     def get_variables(self) -> dict[str, "RequestChunkerProtocol"]:
         ...
 
-    def get_chunks(self) -> dict[str, Any]:
+    def get_chunks(self) -> dict[str, int | tuple[int, ...]]:
         ...
 
     def get_chunk_values(

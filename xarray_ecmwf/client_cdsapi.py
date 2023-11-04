@@ -11,7 +11,7 @@ from . import client_common
 
 LOGGER = logging.getLogger(__name__)
 
-COORDINATES_ORDER = ("time", "step", "isobaricInhPa", "number")
+COORDINATES_ORDER = ("valid_time", "time", "step", "isobaricInhPa", "number")
 
 
 @attrs.define
@@ -50,6 +50,7 @@ class CdsapiRequestChunker:
     request: dict[str, Any]
     request_chunks: dict[str, Any]
     merge_date_time: bool = True
+    time_dim: str = "time"
 
     def get_request_dimensions(self) -> dict[str, list[Any]]:
         request_dimensions: dict[str, list[Any]] = {}
@@ -117,9 +118,11 @@ class CdsapiRequestChunker:
                     self.request | override_time, self.request_chunks
                 )
                 if len(time_chunk_requests) > 1:
-                    self.chunks["time"] = time_chunk
-                    self.chunk_requests["time"] = time_chunk_requests
-                    self.chunked_coords["time"] = xr.IndexVariable("time", time, {})  # type: ignore
+                    self.chunks[self.time_dim] = time_chunk
+                    self.chunk_requests[self.time_dim] = time_chunk_requests
+                    self.chunked_coords[self.time_dim] = xr.IndexVariable(  # type: ignore
+                        self.time_dim, time, {}
+                    )
         self.maybe_update_coords_and_chunk_info("leadtime_hour", "step")
         self.maybe_update_coords_and_chunk_info("step", "step")
         self.maybe_update_coords_and_chunk_info(
@@ -174,9 +177,7 @@ class CdsapiRequestChunker:
         retval = {}
         for name in self.request[param]:
             var_request = self.request | {param: [name]}
-            retval[name] = CdsapiRequestChunker(
-                var_request, self.request_chunks, self.merge_date_time
-            )
+            retval[name] = CdsapiRequestChunker(**vars(self) | {"request": var_request})  # type: ignore
         return retval
 
     def build_requests(self, chunk_requests: dict[str, Any]) -> dict[str, Any]:
