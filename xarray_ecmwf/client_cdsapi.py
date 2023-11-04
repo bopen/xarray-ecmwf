@@ -271,7 +271,7 @@ class CdsapiRequestChunker:
             out = da.isel(selection).values
 
             # horrible workaround for the crazy CDS / MARS convention to return
-            # a short chunk at the start of a dataset (at least on ERA5 and ERA5 Land)
+            # a short request at the start of a dataset (at least on ERA5 and ERA5 Land)
             if (
                 indices[self.time_dim] == 0
                 and da.coords[self.time_dim].size < self.chunks[self.time_dim]
