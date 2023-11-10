@@ -273,7 +273,8 @@ class CdsapiRequestChunker:
             # horrible workaround for the crazy CDS / MARS convention to return
             # a short request at the start of a dataset (at least on ERA5 and ERA5 Land)
             if (
-                indices[self.time_dim] == 0
+                self.time_dim in indices
+                and indices[self.time_dim] == 0
                 and da.coords[self.time_dim].size < self.chunks[self.time_dim]
             ):
                 expected_time_dim_size = self.chunks[self.time_dim]
