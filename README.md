@@ -1,11 +1,56 @@
-# xarray-ecmwf
+Xarray backend to map an ECMWF style request to a service onto an XArray Dataset
 
-Xarray backend to map an ECMWF style request to a service to a dataset
+This Open Source project is build by B-Open - https://www.bopen.eu
 
-## Quick Start
+## Features and limitations
+
+xarray-ecmwf is a Python library and Xarray backend with the following functionalities:
+
+- opens an ECMWF style request as a Xarray Dataset connected to the remote services
+  - the Climate Data Store via cdsapi: ERA5, Seasonal forecasts
+  - the Athospheric Data Store via cdsapi
+  - the ECMWF Open data via ecmwf-opendata: High resolution forecasts, ensemble forecast
+- allows lazy loading the data
+- allow chinking the input request according to a configurable splitting strategy. Allowed strategies:
+  - by one month
+  - by one day
+- supports requests returning a single GRIB file, via cfgrib
+
+## Usage
 
 ```python
->>> import xarray_ecmwf
+>>> import xarray as xr
+>>> request = {
+...     "dataset": "reanalysis-era5-pressure-levels",
+...     "product_type": "reanalysis",
+...     "variable": ["temperature"],
+...     "year": ["2002"],
+...     "month": ["01"],
+...     "day": ["15"],
+...     "time": ["00:00"],
+... }
+>>> ds = xr.open_dataset(request, engine="ecmwf")
+>>> ds
+<xarray.Dataset>
+Dimensions:        (isobaricInhPa: 6, latitude: 721, longitude: 1440)
+Coordinates:
+    number         int64 ...
+    time           datetime64[ns] ...
+    step           timedelta64[ns] ...
+  * isobaricInhPa  (isobaricInhPa) float64 1e+03 850.0 700.0 500.0 400.0 300.0
+    valid_time     datetime64[ns] ...
+  * latitude       (latitude) float64 90.0 89.75 89.5 ... -89.5 -89.75 -90.0
+  * longitude      (longitude) float64 0.0 0.25 0.5 0.75 ... 359.2 359.5 359.8
+Data variables:
+    t              (isobaricInhPa, latitude, longitude) float32 ...
+Attributes:
+    GRIB_edition:            1
+    GRIB_centre:             ecmf
+    GRIB_centreDescription:  European Centre for Medium-Range Weather Forecasts
+    GRIB_subCentre:          0
+    Conventions:             CF-1.7
+    institution:             European Centre for Medium-Range Weather Forecasts
+    history:                 ...
 
 ```
 
