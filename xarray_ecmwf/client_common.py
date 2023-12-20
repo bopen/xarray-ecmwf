@@ -90,8 +90,9 @@ def build_chunk_date_requests(
         if "day" in request_chunks and (
             start is None or date - timedelta_days == start
         ):
-            start, stop = date, min(
-                date + timedelta_days - pd.Timedelta(1, "d"), date_stop
+            start, stop = (
+                date,
+                min(date + timedelta_days - pd.Timedelta(1, "d"), date_stop),
             )
             chunk_requests.append(
                 (
@@ -116,7 +117,7 @@ def build_chunk_date_requests(
 
 
 def build_ymd_coordinates_request(
-    request: dict[str, Any]
+    request: dict[str, Any],
 ) -> np.typing.NDArray[np.datetime64]:
     times: list[np.datetime64] = []
     for year in request["year"]:

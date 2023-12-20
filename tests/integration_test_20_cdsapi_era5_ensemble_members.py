@@ -30,7 +30,9 @@ def test_compare_chunked_no_chunked() -> None:
 
     res1 = ds1.data_vars["2m_temperature"].load()
 
-    ds2 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds2 = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
 
     assert ds2.chunks["time"] == (4, 4)
 

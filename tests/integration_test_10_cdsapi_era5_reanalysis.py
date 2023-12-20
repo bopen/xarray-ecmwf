@@ -36,7 +36,9 @@ def test_compare_chunked_no_chunked_day() -> None:
 
 
 def test_compare_chunked_no_chunked_month() -> None:
-    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds1 = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
     da1 = ds1.data_vars["2m_temperature"]
     res1 = da1.load()
 
@@ -57,7 +59,9 @@ def test_cds_era5_single_time_day() -> None:
 
     assert isinstance(res1, xr.DataArray)
 
-    ds2 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds2 = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
 
     assert ds2.chunks["time"] == (4, 4)
 
@@ -76,7 +80,9 @@ def test_cds_era5_single_time_day() -> None:
 
 
 def test_cds_era5_single_time_month() -> None:
-    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds1 = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
     da1 = ds1.data_vars["2m_temperature"]
     res1 = da1.sel(time="2022-07-16T00:00").load()
 
@@ -104,7 +110,9 @@ def test_cds_era5_small_slice_time() -> None:
 
 
 def test_cds_era5_small_slice_time_month() -> None:
-    ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds1 = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
     da1 = ds1.data_vars["2m_temperature"]
     res1 = da1.sel(time="2022-07-16").load()
 
@@ -127,7 +135,9 @@ def test_cds_era5_empty_slice_time_day() -> None:
 
 
 def test_cds_era5_empty_slice_time_month() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
     res = da.sel(time="2022-07-02").compute()
@@ -146,7 +156,9 @@ def test_cds_era5_big_slice_time_day() -> None:
 
 
 def test_cds_era5_big_slice_time_month() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
     res = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
@@ -156,7 +168,9 @@ def test_cds_era5_big_slice_time_month() -> None:
 
 
 def test_cds_era5_small_slice_time_longitute() -> None:
-    ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={})  # type: ignore
+    ds = xr.open_dataset(
+        REQUEST, engine="ecmwf", request_chunks={"month": 1}, chunks={}
+    )  # type: ignore
     da = ds.data_vars["2m_temperature"]
 
     res = da.sel(time="2022-07-01", longitude=0.25).mean().compute()

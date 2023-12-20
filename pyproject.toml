@@ -3,13 +3,12 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 
 [project]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Topic :: Scientific/Engineering"
 ]
@@ -37,20 +36,11 @@ module = ["cdsapi", "cf2cdm", "ecmwf", "ecmwf.opendata"]
 [tool.ruff]
 ignore = [
   # pydocstyle: Missing Docstrings
-  "D1",
-  # pydocstyle: numpy convention
-  "D107",
-  "D203",
-  "D212",
-  "D213",
-  "D402",
-  "D413",
-  "D415",
-  "D416",
-  "D417"
+  "D1"
 ]
-# Black line length is 88, but black does not format comments.
-line-length = 110
+# Same as Black.
+indent-width = 4
+line-length = 88
 select = [
   # pyflakes
   "F",
@@ -62,6 +52,12 @@ select = [
   # pydocstyle
   "D"
 ]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 110
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
 
 [tool.setuptools]
 packages = ["xarray_ecmwf"]
