@@ -9,7 +9,10 @@ qa:
 	pre-commit run --all-files
 
 unit-tests:
-	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT) --doctest-glob="*.md" --doctest-glob="*.rst"
+	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT)
+
+doc-tests:
+	python -m pytest -vv --doctest-glob="*.md" --doctest-glob="*.rst" README.md
 
 type-check:
 	python -m mypy .
