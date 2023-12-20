@@ -1,20 +1,20 @@
-Xarray backend to map an ECMWF style request to a service onto an XArray Dataset
+Xarray backend to map an ECMWF style request to a service onto an Xarray Dataset
 
 This Open Source project is build by B-Open - https://www.bopen.eu
 
 ## Features and limitations
 
-xarray-ecmwf is a Python library and Xarray backend with the following functionalities:
+xarray-ecmwf is a Python library and [Xarray](https://docs.xarray.dev) backend with the following functionalities:
 
 - opens an ECMWF style request as a Xarray Dataset connected to the remote services
-  - the Climate Data Store via cdsapi: ERA5, Seasonal forecasts
-  - the Athospheric Data Store via cdsapi
-  - the ECMWF Open data via ecmwf-opendata: High resolution forecasts, ensemble forecast
-- allows lazy loading the data
-- allow chinking the input request according to a configurable splitting strategy. Allowed strategies:
+  - the [Climate Data Store](https://cds.climate.copernicus.eu) via [cdsapi](https://github.com/ecmwf/cdsapi): ERA5, Seasonal forecasts
+  - the [Athospheric Data Store](https://ads.atmosphere.copernicus.eu) via cdsapi
+  - the [ECMWF Open data](https://www.ecmwf.int/en/forecasts/datasets/open-data) via [ecmwf-opendata](https://github.com/ecmwf/ecmwf-opendata): High resolution forecasts, ensemble forecast
+- allows lazy loading the data and well integrated with [Dask](https://www.dask.org) and [Dask.distributed](https://distributed.dask.org)
+- allows chunking the input request according to a configurable splitting strategy. Allowed strategies:
   - by one month
   - by one day
-- supports requests returning a single GRIB file, via cfgrib
+- supports requests returning a single GRIB file, via [cfgrib](https://github.com/ecmwf/cfgrib)
 
 ## Usage
 
