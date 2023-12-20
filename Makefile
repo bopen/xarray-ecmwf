@@ -11,9 +11,6 @@ qa:
 unit-tests:
 	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT)
 
-doc-tests:
-	python -m pytest -vv --doctest-glob="*.md" --doctest-glob="*.rst" README.md
-
 type-check:
 	python -m mypy .
 
@@ -35,6 +32,9 @@ docs-build:
 	cd docs && rm -fr _api && make clean && make html
 
 # DO NOT EDIT ABOVE THIS LINE, ADD COMMANDS BELOW
+
+doc-tests:
+	python -m pytest -vv --doctest-glob="*.md" --doctest-glob="*.rst" README.md
 
 integration-tests:
 	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT) --log-cli-level=INFO tests/integration*.py
