@@ -21,28 +21,28 @@ xarray-ecmwf is a Python library and [Xarray](https://docs.xarray.dev) backend w
 ```python
 >>> import xarray as xr
 >>> request = {
-...     "dataset": "reanalysis-era5-pressure-levels",
+...     "dataset": "reanalysis-era5-single-levels",
 ...     "product_type": "reanalysis",
-...     "variable": ["temperature"],
+...     "variable": ["2m_temperature"],
 ...     "year": ["2002"],
 ...     "month": ["01"],
 ...     "day": ["15"],
-...     "time": ["00:00"],
+...     "time": ["00:00", "12:00"],
 ... }
 >>> ds = xr.open_dataset(request, engine="ecmwf")
 >>> ds
 <xarray.Dataset>
-Dimensions:        (isobaricInhPa: 6, latitude: 721, longitude: 1440)
+Dimensions:     (time: 2, latitude: 721, longitude: 1440)
 Coordinates:
-    number         int64 ...
-    time           datetime64[ns] ...
-    step           timedelta64[ns] ...
-  * isobaricInhPa  (isobaricInhPa) float64 1e+03 850.0 700.0 500.0 400.0 300.0
-    valid_time     datetime64[ns] ...
-  * latitude       (latitude) float64 90.0 89.75 89.5 ... -89.5 -89.75 -90.0
-  * longitude      (longitude) float64 0.0 0.25 0.5 0.75 ... 359.2 359.5 359.8
+    number      int64 ...
+  * time        (time) datetime64[ns] 2002-01-15 2002-01-15T12:00:00
+    step        timedelta64[ns] ...
+    surface     float64 ...
+    valid_time  (time) datetime64[ns] ...
+  * latitude    (latitude) float64 90.0 89.75 89.5 89.25 ... -89.5 -89.75 -90.0
+  * longitude   (longitude) float64 0.0 0.25 0.5 0.75 ... 359.2 359.5 359.8
 Data variables:
-    t              (isobaricInhPa, latitude, longitude) float32 ...
+    t2m         (time, latitude, longitude) float32 ...
 Attributes:
     GRIB_edition:            1
     GRIB_centre:             ecmf
