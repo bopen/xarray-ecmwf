@@ -177,7 +177,7 @@ class CdsapiRequestChunker:
         retval = {}
         for name in self.request[param]:
             var_request = self.request | {param: [name]}
-            retval[name] = CdsapiRequestChunker(**vars(self) | {"request": var_request})  # type: ignore
+            retval[name] = CdsapiRequestChunker(**vars(self) | {"request": var_request})
         return retval
 
     def build_requests(self, chunk_requests: dict[str, Any]) -> dict[str, Any]:
