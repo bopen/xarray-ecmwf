@@ -8,17 +8,19 @@ import attrs
 import numpy as np
 import xarray as xr
 
-from . import client_cdsapi, client_common, client_ecmwf_opendata
+from . import client_cdsapi, client_common, client_ecmwf_opendata, client_polytope
 
 LOGGER = logging.getLogger(__name__)
 
 SUPPORTED_CLIENTS: dict[str, type[client_common.RequestClientProtocol]] = {
     "cdsapi": client_cdsapi.CdsapiRequestClient,
     "ecmwf-opendata": client_ecmwf_opendata.EcmwfOpendataRequestClient,
+    "polytope": client_polytope.PolytopeRequestClient,
 }
 SUPPORTED_CHUNKERS: dict[str, type[client_common.RequestChunkerProtocol]] = {
     "cdsapi": client_cdsapi.CdsapiRequestChunker,  # type: ignore
     "ecmwf-opendata": client_cdsapi.CdsapiRequestChunker,  # type: ignore
+    "polytope": client_cdsapi.CdsapiRequestChunker,  # type: ignore
 }
 
 
