@@ -272,17 +272,18 @@ class CdsapiRequestChunker:
 
             # horrible workaround for the crazy CDS / MARS convention to return
             # a short request at the start of a dataset (at least on ERA5 and ERA5 Land)
-            if (
-                self.time_dim in indices
-                and indices[self.time_dim] == 0
-                and da.coords[self.time_dim].size < self.chunks[self.time_dim]
-            ):
-                expected_time_dim_size = self.chunks[self.time_dim]
-                assert isinstance(expected_time_dim_size, int)
-                fixed = np.empty((expected_time_dim_size,) + out.shape[1:])
-                offset = fixed.shape[0] - out.shape[0]
-                fixed[offset:] = out
-                fixed[:offset] = np.nan
-                out = fixed
+            if self.time_dim in indices and indices[self.time_dim] == 0:
+                if isinstance(self.chunks[self.time_dim], int):
+                    time_chunk = self.chunks[self.time_dim]
+                else:
+                    time_chunk = self.chunks[self.time_dim][0]
+                if da.coords[self.time_dim].size < time_chunk:
+                    expected_time_dim_size = self.chunks[self.time_dim]
+                    assert isinstance(expected_time_dim_size, int)
+                    fixed = np.empty((expected_time_dim_size,) + out.shape[1:])
+                    offset = fixed.shape[0] - out.shape[0]
+                    fixed[offset:] = out
+                    fixed[:offset] = np.nan
+                    out = fixed
 
             return out
