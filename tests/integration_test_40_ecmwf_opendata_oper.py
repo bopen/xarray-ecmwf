@@ -35,7 +35,7 @@ def test_compare_chunked_no_chunked_values() -> None:
         request_chunks={"step": 1},
         chunks={},
     )
-    res1 = ds1.data_vars["2t"].load()
+    res1 = ds1.data_vars["t2m"].load()
 
     ds2 = xr.open_dataset(
         REQUEST,  # type: ignore
@@ -43,9 +43,9 @@ def test_compare_chunked_no_chunked_values() -> None:
         client="ecmwf-opendata",
         chunks={},
     )
-    res2 = ds2.data_vars["2t"].load()
+    res2 = ds2.data_vars["t2m"].load()
 
-    assert (res1 - res2).shape == (2, 3, 451, 900)
+    assert (res1 - res2).shape == (2, 3, 721, 1440)
     assert (res1 == res2).all()
 
 
@@ -57,7 +57,7 @@ def test_cds_era5_single_time() -> None:
         chunks={},
         request_chunks={"step": 1},
     )
-    da = ds.data_vars["2t"]
+    da = ds.data_vars["t2m"]
 
     time = datetime.date.today() - datetime.timedelta(days=1)
     res = da.sel(time=f"{time}T00:00").compute()
@@ -78,7 +78,7 @@ def test_cds_era5_small_slice_time() -> None:
         chunks={},
         request_chunks={"step": 1},
     )
-    da = ds.data_vars["2t"]
+    da = ds.data_vars["t2m"]
 
     time = datetime.date.today() - datetime.timedelta(days=1)
     res = da.sel(time=f"{time}").compute()
@@ -100,7 +100,7 @@ def test_cds_era5_small_step() -> None:
         chunks={},
         request_chunks={"step": 1},
     )
-    da = ds.data_vars["2t"]
+    da = ds.data_vars["t2m"]
 
     datetime.date.today() - datetime.timedelta(days=1)
     res = da.sel(step=datetime.timedelta(hours=12)).compute()
@@ -121,7 +121,7 @@ def test_cds_era5_small_slice_step() -> None:
         chunks={},
         request_chunks={"step": 1},
     )
-    da = ds.data_vars["2t"]
+    da = ds.data_vars["t2m"]
 
     datetime.date.today() - datetime.timedelta(days=1)
 
@@ -143,7 +143,7 @@ def test_compare_chunked_no_chunked() -> None:
         request_chunks={"step": 1},
         chunks={},
     )
-    res1 = ds1.data_vars["2t"].load()
+    res1 = ds1.data_vars["t2m"].load()
 
     ds2 = xr.open_dataset(
         REQUEST,  # type: ignore
@@ -151,6 +151,6 @@ def test_compare_chunked_no_chunked() -> None:
         client="ecmwf-opendata",
         chunks={},
     )
-    res2 = ds2.data_vars["2t"].load()
+    res2 = ds2.data_vars["t2m"].load()
 
     assert res1.equals(res2)

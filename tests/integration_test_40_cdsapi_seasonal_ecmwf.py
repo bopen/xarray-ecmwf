@@ -50,7 +50,7 @@ def test_compare_chunked_no_chunked() -> None:
 
     assert ds1.chunks["time"] == (1, 1, 1, 1)
 
-    res1 = ds1.data_vars["2m_temperature"].load()
+    res1 = ds1.data_vars["t2m"].load()
 
     ds2 = xr.open_dataset(
         REQUEST,  # type: ignore
@@ -61,14 +61,14 @@ def test_compare_chunked_no_chunked() -> None:
 
     assert ds2.chunks["time"] == (1, 1, 1, 1)
 
-    res2 = ds2.data_vars["2m_temperature"].load()
+    res2 = ds2.data_vars["t2m"].load()
 
     ds0 = xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         chunks={},
     )
-    res0 = ds0.data_vars["2m_temperature"].load()
+    res0 = ds0.data_vars["t2m"].load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -84,7 +84,7 @@ def test_cds_seasonal_single_time() -> None:
         request_chunks={"leadtime_hour": 1, "day": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.sel(time="2023-08-01T00:00").load()
 
     assert isinstance(res1, xr.DataArray)
@@ -94,7 +94,7 @@ def test_cds_seasonal_single_time() -> None:
         engine="ecmwf",
         chunks={},
     )
-    res0 = ds0.data_vars["2m_temperature"].sel(time="2023-08-01T00:00").load()
+    res0 = ds0.data_vars["t2m"].sel(time="2023-08-01T00:00").load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -107,13 +107,13 @@ def test_cds_seasonal_small_slice_time() -> None:
         request_chunks={"leadtime_hour": 1, "day": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.sel(time="2023-08-01").load()
 
     assert isinstance(res1, xr.DataArray)
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].sel(time="2023-08-01").load()
+    res0 = ds0.data_vars["t2m"].sel(time="2023-08-01").load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -126,7 +126,7 @@ def test_cds_seasonal_small_slice_time_and_step() -> None:
         request_chunks={"leadtime_hour": 1, "day": 1},
         chunks={},
     )
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
     res = da.sel(time="2023-08-01", step=np.timedelta64(36, "h")).mean().compute()
 
     assert isinstance(res, xr.DataArray)
@@ -140,7 +140,7 @@ def test_cds_seasonal_big_slice_time() -> None:
         request_chunks={"leadtime_hour": 1, "day": 1},
         chunks={},
     )
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
 
     res = da.sel(time=slice("2022-07-02", "2022-07-03")).mean().compute()
 

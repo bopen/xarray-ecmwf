@@ -47,7 +47,7 @@ def test_compare_chunked_no_chunked_values() -> None:
     )
     res0 = ds0.data_vars["msl"].load()
 
-    assert (res1 - res0).shape == (2, 3, 2, 451, 900)
+    assert (res1 - res0).shape == (2, 3, 2, 721, 1440)
     assert (res1 == res0).all()
 
 
