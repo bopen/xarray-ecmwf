@@ -25,11 +25,11 @@ def test_open_dataset() -> None:
 
 def test_compare_chunked_no_chunked_day() -> None:
     ds1 = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.load()
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].load()
+    res0 = ds0.data_vars["t2m"].load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -42,11 +42,11 @@ def test_compare_chunked_no_chunked_month() -> None:
         request_chunks={"month": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.load()
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].load()
+    res0 = ds0.data_vars["t2m"].load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -57,7 +57,7 @@ def test_cds_era5_single_time_day() -> None:
 
     assert ds1.chunks["time"] == (2, 2, 2, 2)
 
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.sel(time="2022-07-16T00:00").load()
 
     assert isinstance(res1, xr.DataArray)
@@ -71,12 +71,12 @@ def test_cds_era5_single_time_day() -> None:
 
     assert ds2.chunks["time"] == (4, 4)
 
-    res2 = ds2.data_vars["2m_temperature"].sel(time="2022-07-16T00:00").load()
+    res2 = ds2.data_vars["t2m"].sel(time="2022-07-16T00:00").load()
 
     assert isinstance(res2, xr.DataArray)
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].sel(time="2022-07-16T00:00").load()
+    res0 = ds0.data_vars["t2m"].sel(time="2022-07-16T00:00").load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -92,13 +92,13 @@ def test_cds_era5_single_time_month() -> None:
         request_chunks={"month": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.sel(time="2022-07-16T00:00").load()
 
     assert isinstance(res1, xr.DataArray)
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].sel(time="2022-07-16T00:00").load()
+    res0 = ds0.data_vars["t2m"].sel(time="2022-07-16T00:00").load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -111,13 +111,13 @@ def test_cds_era5_small_slice_time() -> None:
         request_chunks={"day": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.sel(time="2022-07-16").load()
 
     assert isinstance(res1, xr.DataArray)
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].sel(time="2022-07-16").load()
+    res0 = ds0.data_vars["t2m"].sel(time="2022-07-16").load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -130,13 +130,13 @@ def test_cds_era5_small_slice_time_month() -> None:
         request_chunks={"month": 1},
         chunks={},
     )
-    da1 = ds1.data_vars["2m_temperature"]
+    da1 = ds1.data_vars["t2m"]
     res1 = da1.sel(time="2022-07-16").load()
 
     assert isinstance(res1, xr.DataArray)
 
     ds0 = xr.open_dataset(REQUEST, engine="ecmwf", chunks={})  # type: ignore
-    res0 = ds0.data_vars["2m_temperature"].sel(time="2022-07-16").load()
+    res0 = ds0.data_vars["t2m"].sel(time="2022-07-16").load()
 
     assert (res0 - res1).shape == res0.shape
     assert (res0 == res1).all()
@@ -149,7 +149,7 @@ def test_cds_era5_empty_slice_time_day() -> None:
         request_chunks={"day": 1},
         chunks={},
     )
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
 
     res = da.sel(time="2022-07-02").compute()
     assert isinstance(res, xr.DataArray)
@@ -163,7 +163,7 @@ def test_cds_era5_empty_slice_time_month() -> None:
         request_chunks={"month": 1},
         chunks={},
     )
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
 
     res = da.sel(time="2022-07-02").compute()
     assert isinstance(res, xr.DataArray)
@@ -172,7 +172,7 @@ def test_cds_era5_empty_slice_time_month() -> None:
 
 def test_cds_era5_big_slice_time_day() -> None:
     ds = xr.open_dataset(REQUEST, engine="ecmwf", request_chunks={"day": 1}, chunks={})  # type: ignore
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
 
     res = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
 
@@ -187,7 +187,7 @@ def test_cds_era5_big_slice_time_month() -> None:
         request_chunks={"month": 1},
         chunks={},
     )
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
 
     res = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
 
@@ -202,7 +202,7 @@ def test_cds_era5_small_slice_time_longitute() -> None:
         request_chunks={"month": 1},
         chunks={},
     )
-    da = ds.data_vars["2m_temperature"]
+    da = ds.data_vars["t2m"]
 
     res = da.sel(time="2022-07-01", longitude=0.25).mean().compute()
 
