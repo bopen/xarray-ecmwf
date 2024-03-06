@@ -1,4 +1,5 @@
 import contextlib
+import functools
 import logging
 import os
 import uuid
@@ -71,7 +72,7 @@ def robust_save_to_file(
 @attrs.define(slots=False)
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
-    cfgrib_kwargs: dict[str, Any] = {}
+    open_dataset: Callable[..., xr.Dataset] = xr.open_dataset
     cache_file: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
@@ -85,9 +86,6 @@ class DatasetCacher:
         cache_file = self.cache_file
         if override_cache_file is not None:
             cache_file = override_cache_file
-        cfgrib_kwargs = self.cfgrib_kwargs
-        if not cache_file:
-            cfgrib_kwargs = cfgrib_kwargs | {"indexpath": ""}
 
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
@@ -98,7 +96,7 @@ class DatasetCacher:
 
         if not os.path.exists(path):
             robust_save_to_file(self.request_client.download, (result,), path)
-        ds = xr.open_dataset(path, engine="cfgrib", **cfgrib_kwargs)
+        ds = self.open_dataset(path)
         LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
         try:
             yield ds
@@ -139,7 +137,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunker = request_chunker_class(
             filename_or_obj, request_chunks, **request_chunker_kwargs
         )
-        dataset_cacher = DatasetCacher(request_client, cfgrib_kwargs, **cache_kwargs)
+        cfgrib_kwargs = {"engine": "cfgrib"} | cfgrib_kwargs
+        if not cache_kwargs.get("cache_file", True):
+            cfgrib_kwargs = cfgrib_kwargs | {"indexpath": ""}
+
+        open_dataset = functools.partial(xr.open_dataset, **cfgrib_kwargs)
+        dataset_cacher = DatasetCacher(request_client, open_dataset, **cache_kwargs)
         LOGGER.info(request_chunker.get_request_dimensions())
 
         data_vars = {}
