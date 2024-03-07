@@ -124,10 +124,10 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         chunker: str = "cdsapi",
         request_chunks: dict[str, Any] = {},
         cache_kwargs: dict[str, Any] = {},
-        cfgrib_kwargs: dict[str, Any] = {},
+        open_dataset_kwargs: dict[str, Any] = {},
         request_chunker_kwargs: dict[str, Any] = {},
         request_client_class: type[client_common.RequestClientProtocol] | None = None,
-        open_dataset: Callable[[str, ...], xr.Dataset] = xr.open_dataset,
+        open_dataset: Callable[[str], xr.Dataset] = xr.open_dataset,
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
@@ -138,11 +138,11 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunker = request_chunker_class(
             filename_or_obj, request_chunks, **request_chunker_kwargs
         )
-        cfgrib_kwargs = {"engine": "cfgrib"} | cfgrib_kwargs
+        open_dataset_kwargs = {"engine": "cfgrib"} | open_dataset_kwargs
         if not cache_kwargs.get("cache_file", True):
-            cfgrib_kwargs = cfgrib_kwargs | {"indexpath": ""}
+            open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
-        open_dataset = functools.partial(open_dataset, **cfgrib_kwargs)
+        open_dataset = functools.partial(open_dataset, **open_dataset_kwargs)
         dataset_cacher = DatasetCacher(request_client, open_dataset, **cache_kwargs)
         LOGGER.info(request_chunker.get_request_dimensions())
 
