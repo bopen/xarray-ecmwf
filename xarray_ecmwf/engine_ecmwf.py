@@ -127,6 +127,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         cfgrib_kwargs: dict[str, Any] = {},
         request_chunker_kwargs: dict[str, Any] = {},
         request_client_class: type[client_common.RequestClientProtocol] | None = None,
+        open_dataset: Callable[[str, ...], xr.Dataset] = xr.open_dataset,
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
@@ -141,7 +142,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         if not cache_kwargs.get("cache_file", True):
             cfgrib_kwargs = cfgrib_kwargs | {"indexpath": ""}
 
-        open_dataset = functools.partial(xr.open_dataset, **cfgrib_kwargs)
+        open_dataset = functools.partial(open_dataset, **cfgrib_kwargs)
         dataset_cacher = DatasetCacher(request_client, open_dataset, **cache_kwargs)
         LOGGER.info(request_chunker.get_request_dimensions())
 

@@ -11,7 +11,7 @@ from . import client_common
 
 LOGGER = logging.getLogger(__name__)
 
-COORDINATES_ORDER = ("valid_time", "time", "step", "isobaricInhPa", "number")
+DIMS_ORDER = ("valid_time", "time", "step", "isobaricInhPa", "number", "values")
 
 
 @attrs.define
@@ -154,7 +154,7 @@ class CdsapiRequestChunker:
             da = list(sample_ds.data_vars.values())[0]
             coords: dict[str, Any] = {}
             # ensure order
-            for name in COORDINATES_ORDER:
+            for name in DIMS_ORDER:
                 if name in chunked_request_coords:
                     coords[name] = chunked_request_coords[name]
                 elif name in da.dims:
