@@ -12,7 +12,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Topic :: Scientific/Engineering"
 ]
-dependencies = ["cdsapi", "cfgrib", "xarray"]
+dependencies = ["cdsapi", "cfgrib", "polytope-client", "xarray"]
 description = "Xarray backend to access data via the cdsapi package"
 dynamic = ["version"]
 license = {file = "LICENSE"}

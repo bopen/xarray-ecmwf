@@ -12,4 +12,7 @@ dependencies:
 - cdsapi
 - cfgrib
 - ecmwf-opendata
+- pip
 - xarray
+- pip:
+  - polytope-client
