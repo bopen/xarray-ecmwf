@@ -73,11 +73,11 @@ def build_chunks_header_requests(
 
 
 def build_chunk_date_requests(
-    request: dict[str, Any], request_chunks: dict[str, int]
+    request: dict[str, Any], request_chunks: dict[str, int], sep: str = "/"
 ) -> tuple[np.typing.NDArray[np.datetime64], int, list[tuple[int, dict[str, Any]]]]:
     assert set(request_chunks).intersection(["month", "day", "year"]) <= {"day"}
 
-    date_start_str, date_stop_str = request["date"][0].split("/")
+    date_start_str, date_stop_str = request["date"][0].split(sep)
     date_stop = pd.to_datetime(date_stop_str)
     chunk_days = request_chunks.get("day", 1)
     timedelta_days = pd.Timedelta(f"{chunk_days}D")
@@ -97,7 +97,7 @@ def build_chunk_date_requests(
             chunk_requests.append(
                 (
                     len(times),
-                    {"date": f"{start.date()}/{stop.date()}"},
+                    {"date": f"{start.date()}{sep}{stop.date()}"},
                 )
             )
 
@@ -228,7 +228,7 @@ def build_chunk_ymd_day_requests(
 
 
 def build_time_chunk_requests(
-    request: dict[str, Any], request_chunks: dict[str, int]
+    request: dict[str, Any], request_chunks: dict[str, int], sep: str = "/"
 ) -> tuple[
     np.typing.NDArray[np.datetime64],
     int | tuple[int, ...],
@@ -240,7 +240,7 @@ def build_time_chunk_requests(
         )
     elif "date" in request:
         time, time_chunk, time_chunk_requests = build_chunk_date_requests(
-            request, request_chunks
+            request, request_chunks, sep
         )
     else:
         raise ValueError("request must contain either 'year' or 'date'")
