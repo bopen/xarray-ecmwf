@@ -7,6 +7,8 @@ import polytope.api
 
 LOGGER = logging.getLogger(__name__)
 
+CLIENT_KWARGS_DEFAULTS = {"quiet": True, "verbose": False}
+
 
 @attrs.define
 class PolytopeRequestClient:
@@ -20,5 +22,5 @@ class PolytopeRequestClient:
         return result["target"]  # type: ignore
 
     def download(self, result: Any, target: str | None = None) -> str:
-        client = polytope.api.Client(**self.client_kwargs)
+        client = polytope.api.Client(**CLIENT_KWARGS_DEFAULTS | self.client_kwargs)
         return client.retrieve("destination-earth", result["request"], target)  # type: ignore
