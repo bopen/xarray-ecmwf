@@ -122,7 +122,9 @@ class DatasetCacher:
 
         if not os.path.exists(path):
             with self.retrieve(request, override_cache_file=True) as read_ds:
-                read_ds.to_zarr(path, compute=False)
+                # check again as the retrieve may be long
+                if not os.path.exists(path):
+                    read_ds.to_zarr(path, compute=False)
         yield xr.open_dataset(path, engine="zarr")
 
 
