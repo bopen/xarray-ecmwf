@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import hashlib
 import logging
 import os
 import uuid
@@ -78,9 +79,7 @@ class DatasetCacher:
 
     @contextlib.contextmanager
     def retrieve(
-        self,
-        request: dict[str, Any],
-        override_cache_file: bool | None = None,
+        self, request: dict[str, Any], override_cache_file: bool | None = None
     ) -> Iterator[xr.Dataset]:
         LOGGER.info(f"retrieving {request}")
         cache_file = self.cache_file
@@ -111,6 +110,20 @@ class DatasetCacher:
                         pass
                 except Exception:
                     logging.exception("While removing a cache file")
+
+    @contextlib.contextmanager
+    def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
+        LOGGER.info(f"cached_empty_dataset {request}")
+        filename = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".zarr"
+        path = os.path.join(self.cache_folder, filename)
+
+        if not os.path.isdir(self.cache_folder):
+            os.makedirs(self.cache_folder, exist_ok=True)
+
+        if not os.path.exists(path):
+            with self.retrieve(request, override_cache_file=True) as read_ds:
+                read_ds.to_zarr(path, compute=False)
+        yield xr.open_dataset(path, engine="zarr")
 
 
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):

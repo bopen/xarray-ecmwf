@@ -148,10 +148,7 @@ class CdsapiRequestChunker:
         chunked_request_coords = self.compute_chunked_request_coords()
         self.request_chunked_dims = list(self.chunked_coords)
         sample_request = self.first_chunk_request()
-        with dataset_cacher.retrieve(
-            sample_request,
-            override_cache_file=True,
-        ) as sample_ds:
+        with dataset_cacher.cached_empty_dataset(sample_request) as sample_ds:
             da = list(sample_ds.data_vars.values())[0]
             coords: dict[str, Any] = {}
             # ensure order
