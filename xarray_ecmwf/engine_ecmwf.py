@@ -54,13 +54,9 @@ def robust_save_to_file(
 ) -> None:
     tmp_path = path + "." + str(uuid.uuid4())[:8]
 
-    ex = None
     try:
         saver(*args, tmp_path)
-    except Exception:
-        logging.exception("Save failed")
-
-    if ex is not None:
+    except Exception as ex:
         try:
             os.remove(tmp_path)
         except Exception:
@@ -109,7 +105,7 @@ class DatasetCacher:
                     except Exception:
                         pass
                 except Exception:
-                    logging.exception("While removing a cache file")
+                    LOGGER.exception("While removing a cache file")
 
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
