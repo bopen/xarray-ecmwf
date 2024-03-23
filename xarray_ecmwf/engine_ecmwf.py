@@ -166,6 +166,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 var_def = var_request_chunker.get_coords_attrs_and_dtype(dataset_cacher)
             except Exception:
                 LOGGER.exception(f"failed to define {var_name}")
+                continue
             name, coords, attrs, var_attrs, dtype = var_def
             # drop_variables: ... and on name
             if drop_variables is not None and name in drop_variables:
