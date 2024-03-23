@@ -16,16 +16,19 @@ class PolytopeRequestClient:
     client_kwargs: dict[str, Any] = {}
 
     def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
-        target = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".grib"
-        return {"request": request.copy(), "target": target}
+        path = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".grib"
+        client = polytope.api.Client(**CLIENT_KWARGS_DEFAULTS | self.client_kwargs)
+        res = client.retrieve("destination-earth", request, path, asynchronous=True)[0]
+        # the following doesn't downloads, it just waits until the result is ready
+        res.download(pointer=True)
+        return res
 
     def get_filename(self, result: Any) -> str:
-        return result["target"]  # type: ignore
+        return result.output_file  # type: ignore
 
     def download(self, result: Any, target: str | None = None) -> str:
         assert target is not None
-        client = polytope.api.Client(**CLIENT_KWARGS_DEFAULTS | self.client_kwargs)
-        client.retrieve("destination-earth", result["request"], target)
+        result.download(output_file=target)
         if os.stat(target).st_size == 0:
             raise TypeError(f"polytope returned an empty file: {target}")
         return target
