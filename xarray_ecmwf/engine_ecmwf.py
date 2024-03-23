@@ -159,13 +159,17 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
 
         data_vars = {}
         for var_name, var_request_chunker in request_chunker.get_variables().items():
-            (
-                name,
-                coords,
-                attrs,
-                var_attrs,
-                dtype,
-            ) = var_request_chunker.get_coords_attrs_and_dtype(dataset_cacher)
+            # drop_variables: both on var_name...
+            if drop_variables is not None and var_name in drop_variables:
+                continue
+            try:
+                var_def = var_request_chunker.get_coords_attrs_and_dtype(dataset_cacher)
+            except Exception:
+                LOGGER.exception(f"failed to define {var_name}")
+            name, coords, attrs, var_attrs, dtype = var_def
+            # drop_variables: ... and on name
+            if drop_variables is not None and name in drop_variables:
+                continue
             shape = tuple(c.size for c in coords.values())
             dims = list(coords)
             encoding = {
