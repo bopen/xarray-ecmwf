@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import os
 from typing import Any
 
 import attrs
@@ -22,5 +23,9 @@ class PolytopeRequestClient:
         return result["target"]  # type: ignore
 
     def download(self, result: Any, target: str | None = None) -> str:
+        assert target is not None
         client = polytope.api.Client(**CLIENT_KWARGS_DEFAULTS | self.client_kwargs)
-        return client.retrieve("destination-earth", result["request"], target)  # type: ignore
+        client.retrieve("destination-earth", result["request"], target)
+        if os.stat(target).st_size == 0:
+            raise TypeError(f"polytope returned an empty file: {target}")
+        return target
