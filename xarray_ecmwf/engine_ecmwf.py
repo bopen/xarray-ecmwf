@@ -3,6 +3,7 @@ import functools
 import hashlib
 import logging
 import os
+import socket
 import uuid
 from typing import Any, Callable, Iterable, Iterator, Sequence
 
@@ -13,6 +14,7 @@ import xarray as xr
 from . import client_cdsapi, client_common, client_ecmwf_opendata, client_polytope
 
 LOGGER = logging.getLogger(__name__)
+HOSTNAME = socket.gethostname()
 
 SUPPORTED_CLIENTS: dict[str, type[client_common.RequestClientProtocol]] = {
     "cdsapi": client_cdsapi.CdsapiRequestClient,
@@ -89,8 +91,9 @@ class DatasetCacher:
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
-        if not os.path.exists(path):
-            robust_save_to_file(self.request_client.download, (result,), path)
+        with xr.backends.locks.get_write_lock(f"{HOSTNAME}/{filename}"):  # type: ignore
+            if not os.path.exists(path):
+                robust_save_to_file(self.request_client.download, (result,), path)
         ds = self.open_dataset(path)
         LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
         try:
