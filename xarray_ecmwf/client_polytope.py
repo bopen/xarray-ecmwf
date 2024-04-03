@@ -15,8 +15,8 @@ CLIENT_KWARGS_DEFAULTS = {"quiet": True, "verbose": False}
 @attrs.define
 class PolytopeRequestClient:
     client_kwargs: dict[str, Any] = {}
-    retrieve_lock = contextlib.nullcontext
-    download_lock = contextlib.nullcontext
+    retrieve_lock = contextlib.nullcontext()
+    download_lock = contextlib.nullcontext()
 
     def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
         path = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".grib"
