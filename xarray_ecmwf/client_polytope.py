@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import logging
 import os
@@ -5,7 +6,6 @@ from typing import Any
 
 import attrs
 import polytope.api
-import xarray as xr
 
 LOGGER = logging.getLogger(__name__)
 
@@ -15,8 +15,8 @@ CLIENT_KWARGS_DEFAULTS = {"quiet": True, "verbose": False}
 @attrs.define
 class PolytopeRequestClient:
     client_kwargs: dict[str, Any] = {}
-    retrieve_lock = xr.backends.locks.get_write_lock("polytope-retrieve")  # type: ignore
-    download_lock = xr.backends.locks.get_write_lock("polytope-downlaod")  # type: ignore
+    retrieve_lock = contextlib.nullcontext
+    download_lock = contextlib.nullcontext
 
     def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
         path = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".grib"
