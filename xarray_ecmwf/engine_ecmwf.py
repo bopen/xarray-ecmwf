@@ -91,7 +91,7 @@ class DatasetCacher:
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
-        with xr.backends.locks.get_write_lock(f"{HOSTNAME}/{filename}"):  # type: ignore
+        with xr.backends.locks.get_write_lock(f"{HOSTNAME}"):  # type: ignore
             if not os.path.exists(path):
                 robust_save_to_file(self.request_client.download, (result,), path)
         ds = self.open_dataset(path)
