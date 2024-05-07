@@ -253,7 +253,7 @@ class CdsapiRequestChunker:
         dataset_cacher: client_common.DatasetCacherProtocol,
     ) -> np.typing.ArrayLike:
         field_request, selection, indices = self.get_chunk_requests(key)
-        with dataset_cacher.retrieve(field_request) as ds:
+        with dataset_cacher.robust_retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
             da = self.ensure_dims_order(da)
 

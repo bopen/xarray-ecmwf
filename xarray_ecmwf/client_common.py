@@ -26,6 +26,11 @@ class DatasetCacherProtocol(Protocol):
     ) -> ContextManager[xr.Dataset]:
         ...
 
+    def robust_retrieve(
+        self, request: dict[str, Any], override_cache_file: bool | None = None
+    ) -> ContextManager[xr.Dataset]:
+        ...
+
     def cached_empty_dataset(
         self, request: dict[str, Any]
     ) -> ContextManager[xr.Dataset]:

@@ -111,6 +111,18 @@ class DatasetCacher:
                     LOGGER.exception("While removing a cache file")
 
     @contextlib.contextmanager
+    def robust_retrieve(
+        self, request: dict[str, Any], override_cache_file: bool | None = None
+    ) -> Iterator[xr.Dataset]:
+        try:
+            with self.retrieve(request, override_cache_file) as ds:
+                yield ds
+        except (TypeError, ValueError):
+            LOGGER.exception("retrying")
+            with self.retrieve(request, override_cache_file) as ds:
+                yield ds
+
+    @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
         LOGGER.info(f"cached_empty_dataset {request}")
         filename = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".zarr"
