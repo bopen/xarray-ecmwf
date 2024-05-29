@@ -274,7 +274,7 @@ class CdsapiRequestChunker:
                 if isinstance(self.chunks[self.time_dim], int):
                     time_chunk = self.chunks[self.time_dim]
                 else:
-                    time_chunk = self.chunks[self.time_dim][0]
+                    time_chunk = self.chunks[self.time_dim][0]  # type: ignore
                 if da.coords[self.time_dim].size < time_chunk:
                     expected_time_dim_size = self.chunks[self.time_dim]
                     assert isinstance(expected_time_dim_size, int)
