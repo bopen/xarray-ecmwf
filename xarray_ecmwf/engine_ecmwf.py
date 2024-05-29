@@ -87,8 +87,10 @@ class DatasetCacher:
                 with self.retrieve_once(request, override_cache_file) as ds:
                     yield ds
                 break
-            except RuntimeError:
-                LOGGER.exception("Failed retrieve")
+            except RuntimeError as ex:
+                LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
+        else:
+            raise RuntimeError(f"too many retries {tries}")
 
     @contextlib.contextmanager
     def retrieve_once(
