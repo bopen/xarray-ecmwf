@@ -77,6 +77,21 @@ class DatasetCacher:
 
     @contextlib.contextmanager
     def retrieve(
+        self,
+        request: dict[str, Any],
+        override_cache_file: bool | None = None,
+        tries: int = 2,
+    ) -> Iterator[xr.Dataset]:
+        for try_ in range(tries):
+            try:
+                with self.retrieve_once(request, override_cache_file) as ds:
+                    yield ds
+                break
+            except RuntimeError:
+                LOGGER.exception("Failed retrieve")
+
+    @contextlib.contextmanager
+    def retrieve_once(
         self, request: dict[str, Any], override_cache_file: bool | None = None
     ) -> Iterator[xr.Dataset]:
         LOGGER.info(f"retrieving {request}")
