@@ -38,5 +38,7 @@ class PolytopeRequestClient:
             result.download(output_file=target)
         if os.stat(target).st_size == 0:
             request = result.describe()["user_request"]
-            raise TypeError(f"polytope returned an empty file: {target} for {request}")
+            raise RuntimeError(
+                f"polytope returned an empty file: {target} for {request}"
+            )
         return target
