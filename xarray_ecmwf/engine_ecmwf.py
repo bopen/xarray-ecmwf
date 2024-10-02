@@ -87,7 +87,7 @@ class DatasetCacher:
                 with self.retrieve_once(request, override_cache_file) as ds:
                     yield ds
                 break
-            except RuntimeError as ex:
+            except RuntimeError:
                 LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
         else:
             raise RuntimeError(f"too many retries {tries}")
@@ -108,7 +108,7 @@ class DatasetCacher:
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
-        with xr.backends.locks.get_write_lock(f"{HOSTNAME}"):  # type: ignore
+        with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):  # type: ignore
             if not os.path.exists(path):
                 robust_save_to_file(self.request_client.download, (result,), path)
         ds = self.open_dataset(path)
@@ -139,8 +139,9 @@ class DatasetCacher:
         if not os.path.exists(path):
             with self.retrieve(request, override_cache_file=True) as read_ds:
                 # check again as the retrieve may be long
-                if not os.path.exists(path):
-                    read_ds.to_zarr(path, compute=False)
+                with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):  # type: ignore
+                    if not os.path.exists(path):
+                        read_ds.to_zarr(path, compute=False)
         yield xr.open_dataset(path, engine="zarr")
 
 
@@ -184,8 +185,10 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 continue
             try:
                 var_def = var_request_chunker.get_coords_attrs_and_dtype(dataset_cacher)
-            except Exception:
-                LOGGER.exception(f"failed to define {var_name}")
+                LOGGER.info(f"found  variable {var_name} as {var_def[0]}")
+            except Exception as ex:
+                LOGGER.exception(f"failed to define variable {var_name}")
+                latest_ex = ex
                 continue
             name, coords, attrs, var_attrs, dtype = var_def
             # drop_variables: ... and on name
@@ -208,6 +211,9 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
             var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
             data_vars[name] = var
+
+        if not data_vars:
+            raise latest_ex
 
         dataset = xr.Dataset(data_vars, coords, attrs)
         return dataset
