@@ -137,7 +137,7 @@ class DatasetCacher:
             os.makedirs(self.cache_folder, exist_ok=True)
 
         if not os.path.exists(path):
-            with self.retrieve(request, override_cache_file=True) as read_ds:
+            with self.retrieve(request) as read_ds:
                 # check again as the retrieve may be long
                 with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):  # type: ignore
                     if not os.path.exists(path):
@@ -170,7 +170,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         request_chunker = request_chunker_class(
             filename_or_obj, request_chunks, **request_chunker_kwargs
         )
-        open_dataset_kwargs = {"engine": "cfgrib"} | open_dataset_kwargs
+        open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
         if not cache_kwargs.get("cache_file", True):
             open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
