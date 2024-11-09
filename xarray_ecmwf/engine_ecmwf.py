@@ -141,6 +141,9 @@ class DatasetCacher:
                 # check again as the retrieve may be long
                 with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):  # type: ignore
                     if not os.path.exists(path):
+                        # NOTE: be sure that read_ds is chunked so compute=False only
+                        #   writes the metadata. Some open_dataset
+                        read_ds = read_ds.chunk()
                         read_ds.to_zarr(path, compute=False)
         yield xr.open_dataset(path, engine="zarr")
 
