@@ -130,6 +130,7 @@ class DatasetCacher:
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
         LOGGER.info(f"cached_empty_dataset {request}")
+        request = {k: v for k, v in request.items() if k != "download_format"}
         filename = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".zarr"
         path = os.path.join(self.cache_folder, filename)
 
