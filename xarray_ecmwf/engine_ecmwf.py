@@ -130,8 +130,10 @@ class DatasetCacher:
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
         LOGGER.info(f"cached_empty_dataset {request}")
-        request = {k: v for k, v in request.items() if k != "download_format"}
-        filename = hashlib.md5(str(request).encode("utf-8")).hexdigest() + ".zarr"
+        request_stable = {k: v for k, v in request.items() if k != "download_format"}
+        filename = (
+            hashlib.md5(str(request_stable).encode("utf-8")).hexdigest() + ".zarr"
+        )
         path = os.path.join(self.cache_folder, filename)
 
         if not os.path.isdir(self.cache_folder):
@@ -212,7 +214,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
                 var_request_chunker,
                 dataset_cacher,
             )
-            lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)  # type: ignore
+            lazy_var_data = xr.core.indexing.LazilyIndexedArray(var_data)
             var = xr.Variable(dims, lazy_var_data, var_attrs, encoding)
             data_vars[name] = var
 
