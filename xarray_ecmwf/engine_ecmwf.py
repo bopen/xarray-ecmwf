@@ -108,7 +108,7 @@ class DatasetCacher:
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
-        with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):  # type: ignore
+        with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
             if not os.path.exists(path):
                 robust_save_to_file(self.request_client.download, (result,), path)
         ds = self.open_dataset(path)
@@ -142,7 +142,7 @@ class DatasetCacher:
         if not os.path.exists(path):
             with self.retrieve(request) as read_ds:
                 # check again as the retrieve may be long
-                with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):  # type: ignore
+                with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):
                     if not os.path.exists(path):
                         # NOTE: be sure that read_ds is chunked so compute=False only
                         #   writes the metadata. Some open_dataset

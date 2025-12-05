@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 import attrs
-import cdsapi
+import ecmwf.datastores
 import numpy as np
 import xarray as xr
 
@@ -16,13 +16,13 @@ DIMS_ORDER = ("valid_time", "time", "step", "isobaricInhPa", "number", "values")
 
 @attrs.define
 class CdsapiRequestClient:
-    client_kwargs: dict[str, Any] = {"quiet": True, "retry_max": 1}
+    client_kwargs: dict[str, Any] = {"maximum_tries": 1}
 
     def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
         request = request.copy()
         dataset = request.pop("dataset")
-        client = cdsapi.Client(**self.client_kwargs)
-        return client.retrieve(dataset, request | {"format": "grib"})
+        client = ecmwf.datastores.Client(**self.client_kwargs)
+        return client.submit_and_wait_on_results(dataset, request | {"format": "grib"})
 
     def get_filename(self, result: Any) -> str:
         return result.location.split("/")[-1]  # type: ignore

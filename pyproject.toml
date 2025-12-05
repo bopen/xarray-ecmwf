@@ -12,8 +12,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Topic :: Scientific/Engineering"
 ]
-dependencies = ["cdsapi", "cfgrib", "ecmwf-opendata", "polytope-client", "xarray"]
-description = "Xarray backend to access data via the cdsapi package"
+dependencies = ["cfgrib", "ecmwf-datastores-client", "ecmwf-opendata", "polytope-client", "xarray"]
+description = "Xarray backend to access ECMWF datastores"
 dynamic = ["version"]
 license = {file = "LICENSE"}
 name = "xarray-ecmwf"
@@ -32,7 +32,6 @@ strict = true
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
-  "cdsapi",
   "cf2cdm",
   "ecmwf",
   "ecmwf.opendata",

@@ -7,8 +7,8 @@ This Open Source project is build by B-Open - https://www.bopen.eu
 xarray-ecmwf is a Python library and [Xarray](https://docs.xarray.dev) backend with the following functionalities:
 
 - opens an ECMWF style request as a Xarray Dataset connected to the remote services
-  - the [Climate Data Store](https://cds.climate.copernicus.eu) via [cdsapi](https://github.com/ecmwf/cdsapi): ERA5, Seasonal forecasts
-  - the [Athospheric Data Store](https://ads.atmosphere.copernicus.eu) via cdsapi
+  - the [Climate Data Store](https://cds.climate.copernicus.eu) via [ecmwf-datastores-client](https://github.com/ecmwf/ecmwf-datastores-client): ERA5, Seasonal forecasts
+  - the [Atmospheric Data Store](https://ads.atmosphere.copernicus.eu) via ecmwf-datastores-client
   - the [ECMWF Open data](https://www.ecmwf.int/en/forecasts/datasets/open-data) via [ecmwf-opendata](https://github.com/ecmwf/ecmwf-opendata): High resolution forecasts, ensemble forecast
 - allows lazy loading the data and well integrated with [Dask](https://www.dask.org) and [Dask.distributed](https://distributed.dask.org)
 - allows chunking the input request according to a configurable splitting strategy. Allowed strategies:
