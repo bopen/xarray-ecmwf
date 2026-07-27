@@ -95,7 +95,7 @@ def build_chunk_date_requests(
         ):
             start, stop = (
                 date,
-                min(date + timedelta_days - pd.Timedelta(1, "d"), date_stop),
+                min(date + timedelta_days - pd.Timedelta(1, "D"), date_stop),
             )
             chunk_requests.append(
                 (
