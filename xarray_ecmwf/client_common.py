@@ -232,6 +232,47 @@ def build_chunk_ymd_day_requests(
     return np.array(times), len(request["time"]), chunk_requests
 
 
+def build_chunk_ymd_year_requests(
+    request: dict[str, Any], request_chunks: dict[str, int]
+) -> tuple[
+    np.typing.NDArray[np.datetime64],
+    int | tuple[int, ...],
+    list[tuple[int, dict[str, Any]]],
+]:
+    year_chunk_size = request_chunks["year"]
+    if year_chunk_size < 1:
+        raise ValueError("split on year values < 1 not supported")
+
+    datetimes: list[np.datetime64] = []
+    chunk_requests : list[tuple[int, dict[str, Any]]] = []
+    chunks : list[int] = []
+    years = request["year"]
+    index_start = 0
+    while index_start < len(years):
+        index_stop = min(index_start + year_chunk_size, len(years))
+        year_values = years[index_start:index_stop]
+        start = len(datetimes)
+        chunk = 0
+        for year in year_values:
+            assert len(year) == 4
+            for month in request["month"]:
+                assert len(month) == 2
+                ndays = calendar.monthrange(int(year), int(month))[1]
+                for day in request["day"]:
+                    assert len(day) == 2
+                    if int(day) > ndays:
+                        break
+                    for time in request["time"]:
+                        assert len(time) == 5
+                        chunk += 1
+                        datetime = np.datetime64(f"{year}-{month}-{day}T{time}", "ns")
+                        datetimes.append(datetime)
+        chunks.append(chunk)
+        chunk_requests.append((start, {"year": year_values}))
+        index_start += year_chunk_size
+    return np.array(datetimes), tuple(chunks), chunk_requests
+
+
 def build_time_chunk_requests(
     request: dict[str, Any], request_chunks: dict[str, int], sep: str = "/"
 ) -> tuple[
