@@ -147,7 +147,7 @@ def build_chunk_ymd_month_requests(
     list[tuple[int, dict[str, Any]]],
 ]:
     if request_chunks["month"] != 1:
-        raise ValueError("split on day values != 1 not supported")
+        raise ValueError("split on month values != 1 not supported")
 
     datetimes: list[np.datetime64] = []
     chunk_requests = []
