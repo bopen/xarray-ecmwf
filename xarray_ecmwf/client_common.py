@@ -247,10 +247,10 @@ def build_chunk_ymd_year_requests(
     chunk_requests : list[tuple[int, dict[str, Any]]] = []
     chunks : list[int] = []
     years = request["year"]
-    index_start = 0
-    while index_start < len(years):
-        index_stop = min(index_start + year_chunk_size, len(years))
-        year_values = years[index_start:index_stop]
+    istart = 0
+    while istart < len(years):
+        istop = min(istart + year_chunk_size, len(years))
+        year_values = years[istart:istop]
         start = len(datetimes)
         chunk = 0
         for year in year_values:
@@ -269,7 +269,7 @@ def build_chunk_ymd_year_requests(
                         datetimes.append(datetime)
         chunks.append(chunk)
         chunk_requests.append((start, {"year": year_values}))
-        index_start += year_chunk_size
+        istart += year_chunk_size
     return np.array(datetimes), tuple(chunks), chunk_requests
 
 
