@@ -189,12 +189,14 @@ def build_chunk_ymd_requests(
 
     assert len(time_chunk_keys) == 1
     time_chunk_key = time_chunk_keys[0]
-    assert time_chunk_key in set(["day", "month"])
+    assert time_chunk_key in set(["day", "month", "year"])  # this check is redundant
 
     if time_chunk_key == "month":
         out = build_chunk_ymd_month_requests(request, request_chunks)
     elif time_chunk_key == "day":
         out = build_chunk_ymd_day_requests(request, request_chunks)
+    elif time_chunk_key == "year":
+        out = build_chunk_ymd_year_requests(request, request_chunks)
     return out
 
 
