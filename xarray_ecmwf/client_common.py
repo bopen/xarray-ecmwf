@@ -244,8 +244,8 @@ def build_chunk_ymd_year_requests(
         raise ValueError("split on year values < 1 not supported")
 
     datetimes: list[np.datetime64] = []
-    chunk_requests : list[tuple[int, dict[str, Any]]] = []
-    chunks : list[int] = []
+    chunk_requests: list[tuple[int, dict[str, Any]]] = []
+    chunks: list[int] = []
     years = request["year"]
     istart = 0
     while istart < len(years):
