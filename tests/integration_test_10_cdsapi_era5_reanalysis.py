@@ -14,6 +14,16 @@ REQUEST = {
     "time": ["00:00", "12:00"],
 }
 
+REQUEST_YEARS = {
+    "dataset": "reanalysis-era5-single-levels",
+    "product_type": ["reanalysis"],
+    "variable": ["2m_temperature"],
+    "year": ["2021", "2022", "2023"],
+    "month": ["01"],
+    "day": ["01"],
+    "time": ["00:00", "12:00"],
+}
+
 
 def test_open_dataset() -> None:
     res = xr.open_dataset(REQUEST, engine="ecmwf")  # type: ignore
@@ -193,6 +203,53 @@ def test_cds_era5_big_slice_time_month() -> None:
 
     assert isinstance(res, xr.DataArray)
     assert res.size == 1
+
+
+def test_compare_chunked_no_chunked_year() -> None:
+    ds = xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"year": 1},
+        chunks={},
+    )
+    da = ds.data_vars["t2m"]
+
+    res = da.sel(time=slice("2022-07-01", "2022-07-16")).mean().compute()
+
+    assert isinstance(res, xr.DataArray)
+    assert res.size == 1
+
+
+def test_compare_chunked_no_chunked_year_n() -> None:
+    # no year chunking
+    ds0 = xr.open_dataset(REQUEST_YEARS, engine="ecmwf", chunks={})  # type: ignore
+    assert ds0.chunks["time"] == (6,)
+    res0 = ds0.data_vars["t2m"].load()
+
+    # 1 year chunking
+    ds1 = xr.open_dataset(
+        REQUEST_YEARS,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"year": 1},
+        chunks={},
+    )
+    assert ds1.chunks["time"] == (2, 2, 2)
+    res1 = ds1.data_vars["t2m"].load()
+
+    # 2 years chunking
+    ds2 = xr.open_dataset(
+        REQUEST_YEARS,  # type: ignore
+        engine="ecmwf",
+        request_chunks={"year": 2},
+        chunks={},
+    )
+    assert ds2.chunks["time"] == (4, 2)
+    res2 = ds2.data_vars["t2m"].load()
+
+    assert (res0 - res1).shape == res0.shape
+    assert (res0 == res1).all()
+    assert (res0 - res2).shape == res0.shape
+    assert (res0 == res2).all()
 
 
 def test_cds_era5_small_slice_time_longitute() -> None:
