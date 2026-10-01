@@ -101,15 +101,15 @@ class DatasetCacher:
         if override_cache_file is not None:
             cache_file = override_cache_file
 
-        result = self.request_client.submit_and_wait_on_result(request)
-        filename = self.request_client.get_filename(result)
-        path = os.path.join(self.cache_folder, filename)
-
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
+        request_hash = hashlib.md5(str(request).encode("utf-8")).hexdigest()
+        path = os.path.join(self.cache_folder, request_hash + ".grib")
+
         with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
             if not os.path.exists(path):
+                result = self.request_client.submit_and_wait_on_result(request)
                 robust_save_to_file(self.request_client.download, (result,), path)
         ds = self.open_dataset(path)
         LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
