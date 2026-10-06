@@ -4,7 +4,7 @@ requires = ["setuptools>=77", "setuptools_scm>=8"]
 
 [dependency-groups]
 dev = [
-  "mypy>=2.4.0",
+  "mypy>=1.15.0",
   "pandas-stubs>=3.0.5.260914",
   "pre-commit>=4.6.2",
   "pytest>=9.1.1"
