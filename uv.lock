@@ -1,10 +1,10 @@
 requires-python = ">=3.11"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version == '3.14.*' and sys_platform == 'win32'",
   "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
   "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+  "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
@@ -213,6 +213,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cfgv"
+sdist = {url = "https://files.pythonhosted.org/packages/4e/b5/721b8799b04bf9afe054a3899c6cf4e880fcf8563cc71c15610242490a0c/cfgv-3.5.0.tar.gz", hash = "sha256:d5b1034354820651caa73ede66a6294d6e95c1b00acc5e9b098e917404669132", size = 7334, upload-time = "2025-11-19T20:55:51.612Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "3.5.0"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/db/3c/33bac158f8ab7f89b2e59426d5fe2e4f63f7ed25df84c036890172b412b5/cfgv-3.5.0-py2.py3-none-any.whl", hash = "sha256:a8dc6b26ad22ff227d2634a65cb388215ce6cc96bbcc5cfde7641ae87e8dacc0", size = 7445, upload-time = "2025-11-19T20:55:50.744Z"}
+]
+
+[[package]]
 name = "charset-normalizer"
 sdist = {url = "https://files.pythonhosted.org/packages/33/1c/f41d4e74c28ab327ff3acd36053f7ea506c55872d7a90b0fa71aa3ab0c89/charset_normalizer-3.5.2.tar.gz", hash = "sha256:39de2a259fc954455c57274dc94c79d5842774e1247a016aff30bc0efed0f4ef", size = 172659, upload-time = "2026-09-30T04:39:23.398Z"}
 source = {registry = "https://pypi.org/simple"}
@@ -378,6 +387,15 @@ wheels = [
 ]
 
 [[package]]
+name = "distlib"
+sdist = {url = "https://files.pythonhosted.org/packages/c9/02/bd72be9134d25ed783ecbbc38a539ffaefbf90c78418c7fb7229600dbac7/distlib-0.4.3.tar.gz", hash = "sha256:f152097224a0ae24be5a0f6bae1b9359af82133bce63f98a95f86cae1aede9ed", size = 615141, upload-time = "2026-06-12T08:04:52.847Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "0.4.3"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/02/08/9c41fb51ab5b43eb21674aff13df270e8ba6c4b29c8624e328dc7a9482af/distlib-0.4.3-py2.py3-none-any.whl", hash = "sha256:4b0ce306c966eb73bc3a7b6abad017c556dadd92c44701562cd528ac7fde4d5b", size = 470628, upload-time = "2026-06-12T08:04:50.506Z"}
+]
+
+[[package]]
 name = "docstring-parser"
 sdist = {url = "https://files.pythonhosted.org/packages/e0/4d/f332313098c1de1b2d2ff91cf2674415cc7cddab2ca1b01ae29774bd5fdf/docstring_parser-0.18.0.tar.gz", hash = "sha256:292510982205c12b1248696f44959db3cdd1740237a968ea1e2e7a900eeb2015", size = 29341, upload-time = "2026-04-14T04:09:19.867Z"}
 source = {registry = "https://pypi.org/simple"}
@@ -434,12 +452,30 @@ wheels = [
 ]
 
 [[package]]
+name = "filelock"
+sdist = {url = "https://files.pythonhosted.org/packages/53/e4/34efcb869715cf299e47d1ac7b2624d2bcb6f2d3dffc2f0abe8417f65ab2/filelock-4.0.12.tar.gz", hash = "sha256:cf42711a7ac791818b299fab0332a088c65aeeefa36290de98db92c434303b0c", size = 253880, upload-time = "2026-10-05T13:17:43.677Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "4.0.12"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/da/a1/b047e1c486a2c66283633b7dbb73872ca16ca1ce6a426f70d4d037fc8e1c/filelock-4.0.12-py3-none-any.whl", hash = "sha256:5f17ee83ecee8a6f3e389c75822fb70a1c2f0506b99438a6dffa1d56793588c8", size = 111732, upload-time = "2026-10-05T13:17:42.361Z"}
+]
+
+[[package]]
 name = "findlibs"
 sdist = {url = "https://files.pythonhosted.org/packages/91/21/235e81c0e29a5aa84e5374d469723d508de63692049e80654b1b56d1c57e/findlibs-0.1.3.tar.gz", hash = "sha256:49bbe509c8b439ecd9c0d021c301aa9db643a2e6ab4e189a40b505ee4a49db62", size = 11335, upload-time = "2026-07-14T10:52:47.795Z"}
 source = {registry = "https://pypi.org/simple"}
 version = "0.1.3"
 wheels = [
   {url = "https://files.pythonhosted.org/packages/d1/13/63305a756cb6e9408828961d4ff8542f3625d7cfb62289b19016216a9fa2/findlibs-0.1.3-py3-none-any.whl", hash = "sha256:9c14f8506cdcd37e38369259f8cd9aa3c002d58cd7c2beff4852bd205495c555", size = 10714, upload-time = "2026-07-14T10:52:46.902Z"}
+]
+
+[[package]]
+name = "identify"
+sdist = {url = "https://files.pythonhosted.org/packages/53/35/d70c0006c7cee65999ea94a6273e60b2094f600a3d8b71b04318253fc643/identify-2.6.20.tar.gz", hash = "sha256:ad729860a923858d26917c2f4fb0a1d83d27a75b1e090c06440c573f048f3285", size = 99681, upload-time = "2026-09-26T20:29:07.187Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "2.6.20"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/fa/70/fffc9613501877c0a10a1ef73a165e6ded3e53f6e7502227fef56d973933/identify-2.6.20-py2.py3-none-any.whl", hash = "sha256:6a16b69b93187244e0548cbfd25b3e4a6f9a7a2ad784625c3bec2b8d27b81aaa", size = 99506, upload-time = "2026-09-26T20:29:06.054Z"}
 ]
 
 [[package]]
@@ -688,6 +724,15 @@ wheels = [
 ]
 
 [[package]]
+name = "nodeenv"
+sdist = {url = "https://files.pythonhosted.org/packages/9a/8e/105de02c1322cfada6d9710d9146ef8026419d433c9d08359a2d35805811/nodeenv-1.11.0.tar.gz", hash = "sha256:3ce8fe5b71d16e8af7039ca65257354100bc772965d6bc549070649e53b1b146", size = 99301, upload-time = "2026-09-26T11:29:21.367Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "1.11.0"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/54/c8/12811c9b48fde162bb72b6f2e78fada9a247a09d7bb5be2050a5d099c77b/nodeenv-1.11.0-py2.py3-none-any.whl", hash = "sha256:edaa16e6c14d7cf395d75d4bbd5a26390f4dc06501a33b4e76282b02cc688a25", size = 34277, upload-time = "2026-09-26T11:29:19.933Z"}
+]
+
+[[package]]
 name = "numpy"
 resolution-markers = [
   "python_full_version < '3.12' and sys_platform == 'win32'",
@@ -775,10 +820,10 @@ wheels = [
 name = "numpy"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version == '3.14.*' and sys_platform == 'win32'",
   "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
   "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+  "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
@@ -958,6 +1003,15 @@ wheels = [
 ]
 
 [[package]]
+name = "platformdirs"
+sdist = {url = "https://files.pythonhosted.org/packages/42/23/4a86fc741c38c5b69792a4ef954b281afa69bea9f083f881de1b0d23bc07/platformdirs-4.12.3.tar.gz", hash = "sha256:427fc0bb321ae0c5b037fa03238ca74820437be162e78b4848c4d4055b9b766c", size = 59538, upload-time = "2026-10-03T23:40:46.595Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "4.12.3"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/c5/9b/6ce1ead737fe496611bda600c263b9a11ae7bd8f41bb13f9bd7e0a2c37a4/platformdirs-4.12.3-py3-none-any.whl", hash = "sha256:080f3b39423b5abfca9a23d84c4e9795f54d395cd8459867a8ded44084fcd5f8", size = 32493, upload-time = "2026-10-03T23:40:45.104Z"}
+]
+
+[[package]]
 name = "pluggy"
 sdist = {url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z"}
 source = {registry = "https://pypi.org/simple"}
@@ -981,6 +1035,22 @@ source = {registry = "https://pypi.org/simple"}
 version = "0.7.10"
 wheels = [
   {url = "https://files.pythonhosted.org/packages/6e/fb/79b8f748ceb9401843057469f2ffbc39c16045910aa885dd62451e76f1f6/polytope_client-0.7.10-py3-none-any.whl", hash = "sha256:9c278b5f702b4cf89957ea7f52cf191a3ab0941eb47eecca2915928231831f34", size = 55064, upload-time = "2026-07-15T09:35:42.769Z"}
+]
+
+[[package]]
+dependencies = [
+  {name = "cfgv"},
+  {name = "identify"},
+  {name = "nodeenv"},
+  {name = "pyyaml"},
+  {name = "virtualenv"}
+]
+name = "pre-commit"
+sdist = {url = "https://files.pythonhosted.org/packages/74/89/1f3e8e1fc3e97de0fa963495832f581f025f29471602a309e48808244292/pre_commit-4.6.2.tar.gz", hash = "sha256:8f5d7bfb021ecdbcd9d49d89847082dd24172ccde534390081a679ad046e2441", size = 198670, upload-time = "2026-08-10T22:07:18.421Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "4.6.2"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/45/e2/bbb7129c9e7999a6b8ee9cca3b66486c25c423ab5a75f34071798b74ce94/pre_commit-4.6.2-py2.py3-none-any.whl", hash = "sha256:e2dde9a75d3bce11bd3831c26d134df00a2803c1d818be6a0383c3dcda25dc4e", size = 226202, upload-time = "2026-08-10T22:07:16.942Z"}
 ]
 
 [[package]]
@@ -1027,6 +1097,18 @@ source = {registry = "https://pypi.org/simple"}
 version = "2.9.0.post0"
 wheels = [
   {url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z"}
+]
+
+[[package]]
+dependencies = [
+  {name = "filelock"}
+]
+name = "python-discovery"
+sdist = {url = "https://files.pythonhosted.org/packages/0c/57/250bd238b966cece44328235eb85290045d059265fdaf7527a3a958123db/python_discovery-1.6.1.tar.gz", hash = "sha256:cf87d3627dfb4412437fdd5b13eae402607722998d21567993aedbc59b23c15e", size = 84338, upload-time = "2026-09-18T01:31:53.971Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "1.6.1"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/16/7d/e9ffbadfbf89c93848412d04594135c4ae8c1d37d9e053b9c3ed718fabc4/python_discovery-1.6.1-py3-none-any.whl", hash = "sha256:d43fcdef879fe795352bd13ccf8d185ba5a9f86f36cfcd00529f596e737442b3", size = 38664, upload-time = "2026-09-18T01:31:52.448Z"}
 ]
 
 [[package]]
@@ -1307,6 +1389,22 @@ wheels = [
 
 [[package]]
 dependencies = [
+  {name = "distlib"},
+  {name = "filelock"},
+  {name = "packaging"},
+  {name = "platformdirs"},
+  {name = "python-discovery"}
+]
+name = "virtualenv"
+sdist = {url = "https://files.pythonhosted.org/packages/c4/f9/f323b3b6058cff3853b31cf6a49c0425ed797bf9611572ec10d065e08bac/virtualenv-21.14.5.tar.gz", hash = "sha256:c4cb6c13e46b57225a999c7e22a09b163393878facc7ac4c059a57f46faa1647", size = 5467127, upload-time = "2026-10-02T17:42:25.613Z"}
+source = {registry = "https://pypi.org/simple"}
+version = "21.14.5"
+wheels = [
+  {url = "https://files.pythonhosted.org/packages/df/93/084f10ebbecdedf7902ed68fbecc903f0e9c5742155bfffb05eccbc071da/virtualenv-21.14.5-py3-none-any.whl", hash = "sha256:b0651e0174982bba17cc6f0aaa2ef496730cb85a3f35eb5d1119d1c904f7d1da", size = 5487482, upload-time = "2026-10-02T17:42:23.38Z"}
+]
+
+[[package]]
+dependencies = [
   {name = "numpy", version = "2.4.6", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
   {name = "numpy", version = "2.5.3", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"},
   {name = "packaging"},
@@ -1335,6 +1433,7 @@ source = {editable = "."}
 dev = [
   {name = "mypy"},
   {name = "pandas-stubs"},
+  {name = "pre-commit"},
   {name = "pytest"}
 ]
 
@@ -1351,5 +1450,6 @@ requires-dist = [
 dev = [
   {name = "mypy", specifier = ">=2.4.0"},
   {name = "pandas-stubs", specifier = ">=3.0.5.260914"},
+  {name = "pre-commit", specifier = ">=4.6.2"},
   {name = "pytest", specifier = ">=9.1.1"}
 ]

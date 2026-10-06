@@ -5,6 +5,7 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 dev = [
   "mypy>=2.4.0",
   "pandas-stubs>=3.0.5.260914",
+  "pre-commit>=4.6.2",
   "pytest>=9.1.1"
 ]
 
@@ -17,6 +18,9 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering"
 ]
 dependencies = ["cfgrib", "ecmwf-datastores-client", "ecmwf-opendata", "polytope-client", "xarray"]
@@ -25,6 +29,7 @@ dynamic = ["version"]
 license = {file = "LICENSE"}
 name = "xarray-ecmwf"
 readme = "README.md"
+requires-python = ">=3.11"
 
 [project.entry-points."xarray.backends"]
 ecmwf = "xarray_ecmwf.engine_ecmwf:ECMWFBackendEntrypoint"
