@@ -79,7 +79,7 @@ def test_build_chunk_ymd_requests(
         k: v
         for k, v in filter(
             lambda x: x[1], [("year", years), ("month", months), ("day", days)]
-        )
+        )  # why this filter if they are never empty?
     }
     request["time"] = ALL_TIMES
 
@@ -104,6 +104,99 @@ def test_build_chunk_ymd_requests(
     request_chunks = {"day": 45}
     with pytest.raises(ValueError):
         client_common.build_chunk_ymd_requests(request, request_chunks)
+
+
+@pytest.mark.parametrize(
+    "years, months, days",
+    [
+        (["2022"], ALL_MONTHS, ALL_DAYS),
+        (["2020"], ALL_MONTHS, ALL_DAYS),  # leap year
+        (
+            [str(y) for y in range(2015, 2020)],
+            ALL_MONTHS,
+            ALL_DAYS,
+        ),  # consecutive years
+        (["2010", "2015", "2020"], ALL_MONTHS, ALL_DAYS),
+        (["2010", "2015", "2020"], ["01", "02", "09"], ALL_DAYS),
+        (["2010", "2015", "2020"], ["01", "02", "09"], ["01", "29", "30", "31"]),
+    ],
+)
+def test_build_chunk_ymd_year_requests(
+    years: list[str], months: list[str], days: list[str]
+) -> None:
+    request_chunks = {"year": 1}
+    request = {
+        "year": years,
+        "month": months,
+        "day": days,
+        "time": ALL_TIMES,
+    }
+
+    (
+        time,
+        time_chunk,
+        time_chunk_requests,
+    ) = client_common.build_chunk_ymd_requests(request, request_chunks)
+    total_days = 0
+    for year, month, day in itertools.product(
+        map(int, request["year"]),
+        map(int, request["month"]),
+        map(int, request["day"]),
+    ):
+        if day <= calendar.monthrange(year, month)[1]:
+            total_days += 1
+
+    assert len(time) == 24 * total_days  # 24h default value
+    assert len(time_chunk_requests) == len(years)
+    assert isinstance(time_chunk, tuple)
+    assert sum(time_chunk) == len(time)
+
+    offset = 0
+    for (start, chunk_request), year_str, size in zip(
+        time_chunk_requests, years, time_chunk
+    ):
+        assert start == offset
+        assert chunk_request == {"year": [year_str]}
+        offset += size
+
+
+@pytest.mark.parametrize(
+    "year_chunk, expected_year_groups",
+    [
+        (1, [["2015"], ["2016"], ["2017"]]),
+        (2, [["2015", "2016"], ["2017"]]),  # leftover chunk
+        (5, [["2015", "2016", "2017"]]),  # N larger than n years
+    ],
+)
+def test_build_chunk_ymd_year_requests_groups_years(
+    year_chunk: int, expected_year_groups: list[list[str]]
+) -> None:
+    request = {
+        "year": ["2015", "2016", "2017"],
+        "month": ["01"],
+        "day": ["01"],
+        "time": ["00:00"],
+    }  # one time stamp per year
+    request_chunks = {"year": year_chunk}
+    time, time_chunk, time_chunk_requests = client_common.build_chunk_ymd_requests(
+        request, request_chunks
+    )
+    assert len(time) == 3
+    assert [chunk_request["year"] for _, chunk_request in time_chunk_requests] == (
+        expected_year_groups
+    )
+    assert time_chunk == tuple(len(group) for group in expected_year_groups)
+
+
+def test_build_chunk_ymd_year_requests_invalid() -> None:
+    request = {
+        "year": ["2022"],
+        "month": ["01"],
+        "day": ["01"],
+        "time": ["00:00"],
+    }
+    with pytest.raises(ValueError):
+        client_common.build_chunk_ymd_requests(request, {"year": 0})
 
 
 def test_build_chunk_request() -> None:

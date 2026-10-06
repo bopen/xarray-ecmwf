@@ -147,7 +147,7 @@ def build_chunk_ymd_month_requests(
     list[tuple[int, dict[str, Any]]],
 ]:
     if request_chunks["month"] != 1:
-        raise ValueError("split on day values != 1 not supported")
+        raise ValueError("split on month values != 1 not supported")
 
     datetimes: list[np.datetime64] = []
     chunk_requests = []
@@ -189,12 +189,14 @@ def build_chunk_ymd_requests(
 
     assert len(time_chunk_keys) == 1
     time_chunk_key = time_chunk_keys[0]
-    assert time_chunk_key in set(["day", "month"])
+    assert time_chunk_key in set(["day", "month", "year"])  # this check is redundant
 
     if time_chunk_key == "month":
         out = build_chunk_ymd_month_requests(request, request_chunks)
     elif time_chunk_key == "day":
         out = build_chunk_ymd_day_requests(request, request_chunks)
+    elif time_chunk_key == "year":
+        out = build_chunk_ymd_year_requests(request, request_chunks)
     return out
 
 
@@ -228,6 +230,47 @@ def build_chunk_ymd_day_requests(
                     )
 
     return np.array(times), len(request["time"]), chunk_requests
+
+
+def build_chunk_ymd_year_requests(
+    request: dict[str, Any], request_chunks: dict[str, int]
+) -> tuple[
+    np.typing.NDArray[np.datetime64],
+    int | tuple[int, ...],
+    list[tuple[int, dict[str, Any]]],
+]:
+    year_chunk_size = request_chunks["year"]
+    if year_chunk_size < 1:
+        raise ValueError("split on year values < 1 not supported")
+
+    datetimes: list[np.datetime64] = []
+    chunk_requests: list[tuple[int, dict[str, Any]]] = []
+    chunks: list[int] = []
+    years = request["year"]
+    istart = 0
+    while istart < len(years):
+        istop = min(istart + year_chunk_size, len(years))
+        year_values = years[istart:istop]
+        start = len(datetimes)
+        chunk = 0
+        for year in year_values:
+            assert len(year) == 4
+            for month in request["month"]:
+                assert len(month) == 2
+                ndays = calendar.monthrange(int(year), int(month))[1]
+                for day in request["day"]:
+                    assert len(day) == 2
+                    if int(day) > ndays:
+                        break
+                    for time in request["time"]:
+                        assert len(time) == 5
+                        chunk += 1
+                        datetime = np.datetime64(f"{year}-{month}-{day}T{time}", "ns")
+                        datetimes.append(datetime)
+        chunks.append(chunk)
+        chunk_requests.append((start, {"year": year_values}))
+        istart += year_chunk_size
+    return np.array(datetimes), tuple(chunks), chunk_requests
 
 
 def build_time_chunk_requests(
