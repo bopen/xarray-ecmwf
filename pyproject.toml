@@ -4,6 +4,7 @@ requires = ["setuptools>=77", "setuptools_scm>=8"]
 
 [dependency-groups]
 dev = [
+  "dask>=2026.8.0",
   "mypy>=1.15.0",
   "myst-parser>=4.0.1",
   "pandas-stubs>=3.0.5.260914",
@@ -13,7 +14,8 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.15",
   "sphinx>=7.2",
-  "sphinx-autoapi>=3.6.0"
+  "sphinx-autoapi>=3.6.0",
+  "zarr>=3.1.6"
 ]
 
 [project]
@@ -45,7 +47,6 @@ ecmwf = "xarray_ecmwf.engine_ecmwf:ECMWFBackendEntrypoint"
 branch = true
 
 [tool.mypy]
-plugins = "numpy.typing.mypy_plugin"
 strict = true
 
 [[tool.mypy.overrides]]
