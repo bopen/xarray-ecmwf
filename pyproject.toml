@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=77", "setuptools_scm[toml]>=6.2"]
 
 [dependency-groups]
 dev = [
@@ -13,7 +13,6 @@ dev = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
@@ -26,7 +25,8 @@ classifiers = [
 dependencies = ["cfgrib", "ecmwf-datastores-client", "ecmwf-opendata", "polytope-client", "xarray"]
 description = "Xarray backend to access ECMWF datastores"
 dynamic = ["version"]
-license = {file = "LICENSE"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 name = "xarray-ecmwf"
 readme = "README.md"
 requires-python = ">=3.11"
