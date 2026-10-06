@@ -148,14 +148,15 @@ def test_build_chunk_ymd_year_requests(
 
     assert len(time) == 24 * total_days  # 24h default value
     assert len(time_chunk_requests) == len(years)
+    assert isinstance(time_chunk, tuple)
     assert sum(time_chunk) == len(time)
 
     offset = 0
-    for (start, chunk_request), year, size in zip(
+    for (start, chunk_request), year_str, size in zip(
         time_chunk_requests, years, time_chunk
     ):
         assert start == offset
-        assert chunk_request == {"year": [year]}
+        assert chunk_request == {"year": [year_str]}
         offset += size
 
 
