@@ -23,7 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering"
 ]
-dependencies = ["cfgrib", "ecmwf-datastores-client", "ecmwf-opendata", "polytope-client", "xarray"]
+dependencies = ["attrs", "cfgrib", "ecmwf-datastores-client", "ecmwf-opendata", "numpy", "pandas", "polytope-client", "xarray"]
 description = "Xarray backend to access ECMWF datastores"
 dynamic = ["version"]
 license = "Apache-2.0"
@@ -80,6 +80,9 @@ convention = "numpy"
 
 [tool.setuptools]
 packages = ["xarray_ecmwf"]
+
+[tool.setuptools.package-data]
+xarray_ecmwf = ["py.typed"]
 
 [tool.setuptools_scm]
 write_to = "xarray_ecmwf/version.py"

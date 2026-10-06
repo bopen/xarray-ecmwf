@@ -1420,9 +1420,13 @@ wheels = [
 
 [[package]]
 dependencies = [
+  {name = "attrs"},
   {name = "cfgrib"},
   {name = "ecmwf-datastores-client"},
   {name = "ecmwf-opendata"},
+  {name = "numpy", version = "2.4.6", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
+  {name = "numpy", version = "2.5.3", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"},
+  {name = "pandas"},
   {name = "polytope-client"},
   {name = "xarray"}
 ]
@@ -1439,9 +1443,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+  {name = "attrs"},
   {name = "cfgrib"},
   {name = "ecmwf-datastores-client"},
   {name = "ecmwf-opendata"},
+  {name = "numpy"},
+  {name = "pandas"},
   {name = "polytope-client"},
   {name = "xarray"}
 ]
