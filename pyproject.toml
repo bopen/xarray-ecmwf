@@ -1,6 +1,13 @@
 [build-system]
 requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 
+[dependency-groups]
+dev = [
+  "mypy>=2.4.0",
+  "pandas-stubs>=3.0.5.260914",
+  "pytest>=9.1.1"
+]
+
 [project]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -74,4 +81,3 @@ write_to_template = '''
 # Do not change! Do not track in version control!
 __version__ = "{version}"
 '''
-
