@@ -1,10 +1,10 @@
 requires-python = ">=3.11"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
@@ -1257,10 +1257,10 @@ dependencies = [
 name = "numcodecs"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
@@ -1380,10 +1380,10 @@ wheels = [
 name = "numpy"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
@@ -2051,10 +2051,10 @@ dependencies = [
 name = "sphinx"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
@@ -2304,14 +2304,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-  {name = "attrs"},
-  {name = "cfgrib"},
-  {name = "ecmwf-datastores-client"},
-  {name = "ecmwf-opendata"},
-  {name = "numpy"},
-  {name = "pandas"},
-  {name = "polytope-client"},
-  {name = "xarray"}
+  {name = "attrs", specifier = ">=23.1"},
+  {name = "cfgrib", specifier = ">=0.9.10.4"},
+  {name = "ecmwf-datastores-client", specifier = ">=0.1"},
+  {name = "ecmwf-opendata", specifier = ">=0.2"},
+  {name = "numpy", specifier = ">=2.0"},
+  {name = "pandas", specifier = ">=2.2.2"},
+  {name = "polytope-client", specifier = ">=0.7.1"},
+  {name = "xarray", specifier = ">=2024.10"}
 ]
 
 [package.metadata.requires-dev]
@@ -2365,10 +2365,10 @@ dependencies = [
 name = "zarr"
 resolution-markers = [
   "python_full_version >= '3.15' and sys_platform == 'win32'",
-  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform == 'win32'",
+  "python_full_version >= '3.15' and sys_platform == 'emscripten'",
   "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+  "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
   "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
