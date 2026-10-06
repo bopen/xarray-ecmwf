@@ -25,13 +25,8 @@ docker-build:
 docker-run:
 	docker run --rm -ti -v $(PWD):/srv $(PROJECT)
 
-template-update:
-	pre-commit run --all-files cruft -c .pre-commit-config-cruft.yaml
-
 docs-build:
 	cd docs && rm -fr _api && make clean && make html
-
-# DO NOT EDIT ABOVE THIS LINE, ADD COMMANDS BELOW
 
 doc-tests:
 	python -m pytest -vv --doctest-glob="*.md" --doctest-glob="*.rst" README.md
