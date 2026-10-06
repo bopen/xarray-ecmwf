@@ -1,40 +1,28 @@
-PROJECT := xarray_ecmwf
-CONDA := conda
-CONDAFLAGS :=
 COV_REPORT := html
+PYTHON := uv run --frozen
 
-default: qa unit-tests type-check
+default: qa unit-tests check-typing
 
 qa:
-	pre-commit run --all-files
+	$(PYTHON) -m pre_commit run --all-files
 
 unit-tests:
-	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT)
-
-type-check:
-	python -m mypy .
-
-conda-env-update:
-	$(CONDA) install -y -c conda-forge conda-merge
-	$(CONDA) run conda-merge environment.yml ci/environment-ci.yml > ci/combined-environment-ci.yml
-	$(CONDA) env update $(CONDAFLAGS) -f ci/combined-environment-ci.yml
-
-docker-build:
-	docker build -t $(PROJECT) .
-
-docker-run:
-	docker run --rm -ti -v $(PWD):/srv $(PROJECT)
-
-template-update:
-	pre-commit run --all-files cruft -c .pre-commit-config-cruft.yaml
-
-docs-build:
-	cd docs && rm -fr _api && make clean && make html
-
-# DO NOT EDIT ABOVE THIS LINE, ADD COMMANDS BELOW
-
-doc-tests:
-	python -m pytest -vv --doctest-glob="*.md" --doctest-glob="*.rst" README.md
+	$(PYTHON) -m pytest -vv --cov=. --cov-report=$(COV_REPORT)
 
 integration-tests:
-	python -m pytest -vv --cov=. --cov-report=$(COV_REPORT) --log-cli-level=INFO tests/integration*.py
+	$(PYTHON) -m pytest -vv --cov=. --cov-report=$(COV_REPORT) tests/integration_test_*.py
+
+all-tests:
+	$(PYTHON) -m pytest -vv --cov=. --cov-report=$(COV_REPORT) tests/test*.py tests/integration_test_*.py
+
+check-typing:
+	$(PYTHON) -m mypy .
+
+docs-build:
+	$(PYTHON) -m sphinx -b html docs docs/_build/html
+
+doc-tests:
+	$(PYTHON) -m pytest -vv --doctest-glob="*.md" README.md
+
+minver-tests:
+	uv run --resolution lowest-direct -p python3.11 -m pytest .
