@@ -198,11 +198,11 @@ def _monthly_year_request() -> dict[str, Any]:
     }
 
 
-def test_expected_end_date_trims_partial_last_year() -> None:
+def test_force_end_date_trims_partial_last_year() -> None:
     time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
         _monthly_year_request(),
         {"year": 1},
-        expected_end_date="2026-07-01",
+        force_end_date="2026-07-01",
     )
     assert len(time) == 12 + 12 + 7
     assert time[-1] == np.datetime64("2026-07-01T00:00", "ns")
@@ -214,11 +214,11 @@ def test_expected_end_date_trims_partial_last_year() -> None:
     ]
 
 
-def test_expected_end_date_drops_years_after_the_cutoff() -> None:
+def test_force_end_date_drops_years_after_the_cutoff() -> None:
     time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
         _monthly_year_request(),
         {"year": 1},
-        expected_end_date="2025-12-01",
+        force_end_date="2025-12-01",
     )
     assert len(time) == 24
     assert time[-1] == np.datetime64("2025-12-01T00:00", "ns")
@@ -229,11 +229,11 @@ def test_expected_end_date_drops_years_after_the_cutoff() -> None:
     ]
 
 
-def test_expected_end_date_shrinks_a_multi_year_chunk() -> None:
+def test_force_end_date_shrinks_a_multi_year_chunk() -> None:
     time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
         _monthly_year_request(),
         {"year": 2},
-        expected_end_date="2025-06-01",
+        force_end_date="2025-06-01",
     )
     assert len(time) == 12 + 6
     assert time[-1] == np.datetime64("2025-06-01T00:00", "ns")
@@ -241,7 +241,7 @@ def test_expected_end_date_shrinks_a_multi_year_chunk() -> None:
     assert time_chunk_requests == [(0, {"year": ["2024", "2025"]})]
 
 
-def test_expected_end_date_on_a_chunk_boundary_keeps_equal_day_chunks() -> None:
+def test_force_end_date_on_a_chunk_boundary_keeps_equal_day_chunks() -> None:
     request = {
         "year": ["2024"],
         "month": ["01", "02"],
@@ -251,7 +251,7 @@ def test_expected_end_date_on_a_chunk_boundary_keeps_equal_day_chunks() -> None:
     time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
         request,
         {"day": 1},
-        expected_end_date="2024-01-02",
+        force_end_date="2024-01-02",
     )
     assert list(time) == [
         np.datetime64("2024-01-01T00:00", "ns"),
@@ -261,7 +261,7 @@ def test_expected_end_date_on_a_chunk_boundary_keeps_equal_day_chunks() -> None:
     assert len(time_chunk_requests) == 2
 
 
-def test_expected_end_date_shrinks_the_last_equal_sized_chunk() -> None:
+def test_force_end_date_shrinks_the_last_equal_sized_chunk() -> None:
     request = {
         "year": ["2024"],
         "month": ["01"],
@@ -271,7 +271,7 @@ def test_expected_end_date_shrinks_the_last_equal_sized_chunk() -> None:
     time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
         request,
         {"day": 1},
-        expected_end_date="2024-01-02T00:00",
+        force_end_date="2024-01-02T00:00",
     )
     assert list(time) == [
         np.datetime64("2024-01-01T00:00", "ns"),
@@ -285,24 +285,24 @@ def test_expected_end_date_shrinks_the_last_equal_sized_chunk() -> None:
     ]
 
 
-def test_expected_end_date_past_the_last_timestamp_is_a_no_op() -> None:
+def test_force_end_date_past_the_last_timestamp_is_a_no_op() -> None:
     full, full_chunk, full_requests = client_common.build_time_chunk_requests(
         _monthly_year_request(), {"year": 1}
     )
     trimmed, trimmed_chunk, trimmed_requests = client_common.build_time_chunk_requests(
-        _monthly_year_request(), {"year": 1}, expected_end_date="2027-01-01"
+        _monthly_year_request(), {"year": 1}, force_end_date="2027-01-01"
     )
     assert list(trimmed) == list(full)
     assert trimmed_chunk == full_chunk
     assert trimmed_requests == full_requests
 
 
-def test_expected_end_date_before_the_first_timestamp_raises() -> None:
+def test_force_end_date_before_the_first_timestamp_raises() -> None:
     with pytest.raises(ValueError, match="before the first timestamp"):
         client_common.build_time_chunk_requests(
             _monthly_year_request(),
             {"year": 1},
-            expected_end_date="2020-01-01",
+            force_end_date="2020-01-01",
         )
 
 
