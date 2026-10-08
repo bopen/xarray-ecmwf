@@ -12,6 +12,7 @@ xarray-ecmwf is a Python library and [Xarray](https://docs.xarray.dev) backend w
   - the [ECMWF Open data](https://www.ecmwf.int/en/forecasts/datasets/open-data) via [ecmwf-opendata](https://github.com/ecmwf/ecmwf-opendata): High resolution forecasts, ensemble forecast
 - allows lazy loading the data and well integrated with [Dask](https://www.dask.org) and [Dask.distributed](https://distributed.dask.org)
 - allows chunking the input request according to a configurable splitting strategy. Allowed strategies:
+  - by N years
   - by one month
   - by one day
 - supports requests returning a single GRIB file, via [cfgrib](https://github.com/ecmwf/cfgrib)

@@ -52,6 +52,7 @@ class CdsapiRequestChunker:
     merge_date_time: bool = True
     time_dim: str = "time"
     time_sep: str = "/"
+    force_end_date: str | None = None
 
     def get_request_dimensions(self) -> dict[str, list[Any]]:
         request_dimensions: dict[str, list[Any]] = {}
@@ -116,7 +117,10 @@ class CdsapiRequestChunker:
                     time_chunk,
                     time_chunk_requests,
                 ) = client_common.build_time_chunk_requests(
-                    self.request | override_time, self.request_chunks, self.time_sep
+                    self.request | override_time,
+                    self.request_chunks,
+                    self.time_sep,
+                    force_end_date=self.force_end_date,
                 )
                 if len(time_chunk_requests) > 1:
                     self.chunks[self.time_dim] = time_chunk
