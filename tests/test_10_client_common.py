@@ -2,6 +2,7 @@ import calendar
 import itertools
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -186,6 +187,123 @@ def test_build_chunk_ymd_year_requests_groups_years(
         expected_year_groups
     )
     assert time_chunk == tuple(len(group) for group in expected_year_groups)
+
+
+def _monthly_year_request() -> dict[str, Any]:
+    return {
+        "year": ["2024", "2025", "2026"],
+        "month": [f"{month:02}" for month in range(1, 13)],
+        "day": ["01"],
+        "time": ["00:00"],
+    }
+
+
+def test_expected_end_date_trims_partial_last_year() -> None:
+    time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
+        _monthly_year_request(),
+        {"year": 1},
+        expected_end_date="2026-07-01",
+    )
+    assert len(time) == 12 + 12 + 7
+    assert time[-1] == np.datetime64("2026-07-01T00:00", "ns")
+    assert time_chunk == (12, 12, 7)
+    assert [chunk_request["year"] for _, chunk_request in time_chunk_requests] == [
+        ["2024"],
+        ["2025"],
+        ["2026"],
+    ]
+
+
+def test_expected_end_date_drops_years_after_the_cutoff() -> None:
+    time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
+        _monthly_year_request(),
+        {"year": 1},
+        expected_end_date="2025-12-01",
+    )
+    assert len(time) == 24
+    assert time[-1] == np.datetime64("2025-12-01T00:00", "ns")
+    assert time_chunk == (12, 12)
+    assert [chunk_request["year"] for _, chunk_request in time_chunk_requests] == [
+        ["2024"],
+        ["2025"],
+    ]
+
+
+def test_expected_end_date_shrinks_a_multi_year_chunk() -> None:
+    time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
+        _monthly_year_request(),
+        {"year": 2},
+        expected_end_date="2025-06-01",
+    )
+    assert len(time) == 12 + 6
+    assert time[-1] == np.datetime64("2025-06-01T00:00", "ns")
+    assert time_chunk == (18,)
+    assert time_chunk_requests == [(0, {"year": ["2024", "2025"]})]
+
+
+def test_expected_end_date_on_a_chunk_boundary_keeps_equal_day_chunks() -> None:
+    request = {
+        "year": ["2024"],
+        "month": ["01", "02"],
+        "day": ["01", "02"],
+        "time": ["00:00"],
+    }
+    time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
+        request,
+        {"day": 1},
+        expected_end_date="2024-01-02",
+    )
+    assert list(time) == [
+        np.datetime64("2024-01-01T00:00", "ns"),
+        np.datetime64("2024-01-02T00:00", "ns"),
+    ]
+    assert time_chunk == 1
+    assert len(time_chunk_requests) == 2
+
+
+def test_expected_end_date_shrinks_the_last_equal_sized_chunk() -> None:
+    request = {
+        "year": ["2024"],
+        "month": ["01"],
+        "day": ["01", "02"],
+        "time": ["00:00", "12:00"],
+    }
+    time, time_chunk, time_chunk_requests = client_common.build_time_chunk_requests(
+        request,
+        {"day": 1},
+        expected_end_date="2024-01-02T00:00",
+    )
+    assert list(time) == [
+        np.datetime64("2024-01-01T00:00", "ns"),
+        np.datetime64("2024-01-01T12:00", "ns"),
+        np.datetime64("2024-01-02T00:00", "ns"),
+    ]
+    assert time_chunk == (2, 1)
+    assert [chunk_request["day"] for _, chunk_request in time_chunk_requests] == [
+        "01",
+        "02",
+    ]
+
+
+def test_expected_end_date_past_the_last_timestamp_is_a_no_op() -> None:
+    full, full_chunk, full_requests = client_common.build_time_chunk_requests(
+        _monthly_year_request(), {"year": 1}
+    )
+    trimmed, trimmed_chunk, trimmed_requests = client_common.build_time_chunk_requests(
+        _monthly_year_request(), {"year": 1}, expected_end_date="2027-01-01"
+    )
+    assert list(trimmed) == list(full)
+    assert trimmed_chunk == full_chunk
+    assert trimmed_requests == full_requests
+
+
+def test_expected_end_date_before_the_first_timestamp_raises() -> None:
+    with pytest.raises(ValueError, match="before the first timestamp"):
+        client_common.build_time_chunk_requests(
+            _monthly_year_request(),
+            {"year": 1},
+            expected_end_date="2020-01-01",
+        )
 
 
 def test_build_chunk_ymd_year_requests_invalid() -> None:
