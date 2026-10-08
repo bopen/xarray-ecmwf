@@ -263,8 +263,63 @@ def build_chunk_ymd_year_requests(
     return np.array(datetimes), tuple(chunks), chunk_requests
 
 
+def trim_ymd_time_to_expected_end_date(
+    time: np.typing.NDArray[np.datetime64],
+    time_chunk: int | tuple[int, ...],
+    time_chunk_requests: list[tuple[int, dict[str, Any]]],
+    expected_end_date: str,
+) -> tuple[
+    np.typing.NDArray[np.datetime64],
+    int | tuple[int, ...],
+    list[tuple[int, dict[str, Any]]],
+]:
+    """Cut a year/month/day time coordinate at ``expected_end_date``.
+
+    ``build_chunk_ymd_requests`` builds every timestamp in the cartesian
+    product, so the last year is a full set of months even when CDS has not
+    published them yet. Timestamps after the cutoff are dropped, and the
+    chunk sizes are resized so they still add up to the coordinate that
+    remains. The cutoff is inclusive: a timestamp equal to
+    ``expected_end_date`` stays. A chunk that lies entirely past the cutoff
+    is removed. A chunk that crosses it keeps the same CDS request and only
+    its length changes.
+    """
+    if len(time) == 0:
+        raise ValueError("cannot apply expected_end_date to an empty time coordinate")
+
+    end = pd.Timestamp(expected_end_date).to_datetime64().astype("datetime64[ns]")
+    cut = int(np.searchsorted(time, end, side="right"))
+    if cut == 0:
+        raise ValueError(
+            f"expected_end_date {expected_end_date} is before the first "
+            f"timestamp {time[0]}"
+        )
+    if cut >= len(time):
+        return time, time_chunk, time_chunk_requests
+
+    starts = [start for start, _ in time_chunk_requests]
+    new_requests: list[tuple[int, dict[str, Any]]] = []
+    new_sizes: list[int] = []
+    for index, (start, chunk_request) in enumerate(time_chunk_requests):
+        if start >= cut:
+            break
+        next_start = starts[index + 1] if index + 1 < len(starts) else len(time)
+        new_sizes.append(min(next_start, cut) - start)
+        new_requests.append((start, chunk_request))
+
+    trimmed = time[:cut]
+    if isinstance(time_chunk, int) and all(size == time_chunk for size in new_sizes):
+        return trimmed, time_chunk, new_requests
+    if isinstance(time_chunk, int) and len(new_sizes) == 1:
+        return trimmed, new_sizes[0], new_requests
+    return trimmed, tuple(new_sizes), new_requests
+
+
 def build_time_chunk_requests(
-    request: dict[str, Any], request_chunks: dict[str, int], sep: str = "/"
+    request: dict[str, Any],
+    request_chunks: dict[str, int],
+    sep: str = "/",
+    expected_end_date: str | None = None,
 ) -> tuple[
     np.typing.NDArray[np.datetime64],
     int | tuple[int, ...],
@@ -274,6 +329,10 @@ def build_time_chunk_requests(
         time, time_chunk, time_chunk_requests = build_chunk_ymd_requests(
             request, request_chunks
         )
+        if expected_end_date is not None:
+            time, time_chunk, time_chunk_requests = trim_ymd_time_to_expected_end_date(
+                time, time_chunk, time_chunk_requests, expected_end_date
+            )
     elif "date" in request:
         time, time_chunk, time_chunk_requests = build_chunk_date_requests(
             request, request_chunks, sep
