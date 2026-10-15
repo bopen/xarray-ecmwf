@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from xarray_ecmwf import client_common
+from xarray_ecmwf import client_cdsapi, client_common
 
 ALL_MONTHS = [f"{m:02}" for m in range(1, 13)]
 ALL_DAYS = [f"{d:02}" for d in range(1, 32)]
@@ -295,6 +295,24 @@ def test_force_end_date_past_the_last_timestamp_is_a_no_op() -> None:
     assert list(trimmed) == list(full)
     assert trimmed_chunk == full_chunk
     assert trimmed_requests == full_requests
+
+
+def test_force_end_date_stays_when_one_chunk_remains() -> None:
+    chunker = client_cdsapi.CdsapiRequestChunker(
+        request={
+            "year": ["1950", "1951"],
+            "month": [f"{month:02}" for month in range(1, 13)],
+            "day": ["01"],
+            "time": ["00:00"],
+        },
+        request_chunks={"year": 1},
+        time_dim="valid_time",
+        force_end_date="1950-08-17",
+    )
+    valid_time = chunker.compute_chunked_request_coords()["valid_time"]
+    assert valid_time.size == 8
+    assert valid_time.values[-1] == np.datetime64("1950-08-01T00:00", "ns")
+    assert chunker.first_chunk_request()["year"] == ["1950"]
 
 
 def test_force_end_date_before_the_first_timestamp_raises() -> None:
