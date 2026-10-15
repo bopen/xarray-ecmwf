@@ -55,6 +55,25 @@ Attributes:
 
 ```
 
+## `force_end_date`
+
+Pass `force_end_date` in `request_chunker_kwargs`. The keyword uses underscores.
+
+For a request built from `year`, `month`, `day`, and `time`, the time coordinate is every combination of those lists. Timestamps after `force_end_date` are dropped. A timestamp equal to it stays. The dataset coordinate ends at the last remaining timestamp, also when only one chunk is left. With a monthly series on day `01` and `force_end_date` `1950-08-17`, the last time is `1950-08-01`.
+
+```python
+>>> ds = xr.open_dataset(
+...     request,
+...     engine="ecmwf",
+...     request_chunks={"year": 1},
+...     request_chunker_kwargs={"force_end_date": "1950-08-17"},
+... )
+```
+
+The option applies to requests that contain `year`. A request that uses `date` is left unchanged.
+
+The CDS request for a year still carries the original `month` list. The coordinate ends at the last timestamp that is not after `force_end_date`.
+
 ## License
 
 ```
