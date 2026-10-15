@@ -1,9 +1,12 @@
 import calendar
+import logging
 from typing import Any, ContextManager, Protocol
 
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RequestClientProtocol(Protocol):
@@ -336,6 +339,9 @@ def build_time_chunk_requests(
         time, time_chunk, time_chunk_requests = build_chunk_date_requests(
             request, request_chunks, sep
         )
+        if force_end_date is not None:
+            msg = "forced_end_date param is ignored for date-interval requests."
+            LOGGER.warning(msg)
     else:
         raise ValueError("request must contain either 'year' or 'date'")
 
