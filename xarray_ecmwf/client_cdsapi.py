@@ -122,7 +122,7 @@ class CdsapiRequestChunker:
                     self.time_sep,
                     force_end_date=self.force_end_date,
                 )
-                if len(time_chunk_requests) > 1:
+                if self.force_end_date is not None or len(time_chunk_requests) > 1:
                     self.chunks[self.time_dim] = time_chunk
                     self.chunk_requests[self.time_dim] = time_chunk_requests
                     self.chunked_coords[self.time_dim] = xr.IndexVariable(  # type: ignore
