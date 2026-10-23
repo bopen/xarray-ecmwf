@@ -5,6 +5,7 @@ requires = ["setuptools>=77", "setuptools_scm>=8"]
 [dependency-groups]
 dev = [
   "dask>=2026.8.0",
+  "deptry>=0.25.1",
   "mypy>=1.15.0",
   "myst-parser>=4.0.1",
   "pandas-stubs>=3.0.5.260914",
@@ -45,6 +46,10 @@ ecmwf = "xarray_ecmwf.engine_ecmwf:ECMWFBackendEntrypoint"
 
 [tool.coverage.run]
 branch = true
+
+[tool.deptry.per_rule_ignores]
+DEP001 = ["cartopy", "matplotlib"]
+DEP002 = ["cfgrib"]
 
 [tool.mypy]
 strict = true
