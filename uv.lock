@@ -2477,20 +2477,22 @@ wheels = [
 dependencies = [
   {name = "attrs"},
   {name = "cfgrib"},
+  {name = "dask"},
   {name = "ecmwf-datastores-client"},
   {name = "ecmwf-opendata"},
   {name = "numpy", version = "2.4.6", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
   {name = "numpy", version = "2.5.4", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"},
   {name = "pandas"},
   {name = "polytope-client"},
-  {name = "xarray"}
+  {name = "xarray"},
+  {name = "zarr", version = "3.1.6", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
+  {name = "zarr", version = "3.4.1", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"}
 ]
 name = "xarray-ecmwf"
 source = {editable = "."}
 
 [package.dev-dependencies]
 dev = [
-  {name = "dask"},
   {name = "deptry"},
   {name = "mypy"},
   {name = "myst-parser"},
@@ -2502,26 +2504,25 @@ dev = [
   {name = "ruff"},
   {name = "sphinx", version = "9.0.4", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
   {name = "sphinx", version = "9.1.0", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"},
-  {name = "sphinx-autoapi"},
-  {name = "zarr", version = "3.1.6", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
-  {name = "zarr", version = "3.4.1", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"}
+  {name = "sphinx-autoapi"}
 ]
 
 [package.metadata]
 requires-dist = [
   {name = "attrs", specifier = ">=23.1"},
   {name = "cfgrib", specifier = ">=0.9.10.4"},
+  {name = "dask", specifier = ">=2026.8.0"},
   {name = "ecmwf-datastores-client", specifier = ">=0.1"},
   {name = "ecmwf-opendata", specifier = ">=0.2"},
   {name = "numpy", specifier = ">=2.0"},
   {name = "pandas", specifier = ">=2.2.2"},
   {name = "polytope-client", specifier = ">=0.7.1"},
-  {name = "xarray", specifier = ">=2024.10"}
+  {name = "xarray", specifier = ">=2025.6"},
+  {name = "zarr", specifier = ">=3.1.6"}
 ]
 
 [package.metadata.requires-dev]
 dev = [
-  {name = "dask", specifier = ">=2026.8.0"},
   {name = "deptry", specifier = ">=0.25.1"},
   {name = "mypy", specifier = ">=1.15.0"},
   {name = "myst-parser", specifier = ">=4.0.1"},
@@ -2532,8 +2533,7 @@ dev = [
   {name = "pytest-cov", specifier = ">=5.0"},
   {name = "ruff", specifier = ">=0.15"},
   {name = "sphinx", specifier = ">=7.2"},
-  {name = "sphinx-autoapi", specifier = ">=3.6.0"},
-  {name = "zarr", specifier = ">=3.1.6"}
+  {name = "sphinx-autoapi", specifier = ">=3.6.0"}
 ]
 
 [[package]]

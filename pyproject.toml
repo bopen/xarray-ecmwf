@@ -4,7 +4,6 @@ requires = ["setuptools>=77", "setuptools_scm>=8"]
 
 [dependency-groups]
 dev = [
-  "dask>=2026.8.0",
   "deptry>=0.25.1",
   "mypy>=1.15.0",
   "myst-parser>=4.0.1",
@@ -15,8 +14,7 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.15",
   "sphinx>=7.2",
-  "sphinx-autoapi>=3.6.0",
-  "zarr>=3.1.6"
+  "sphinx-autoapi>=3.6.0"
 ]
 
 [project]
@@ -32,7 +30,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering"
 ]
-dependencies = ["attrs>=23.1", "cfgrib>=0.9.10.4", "ecmwf-datastores-client>=0.1", "ecmwf-opendata>=0.2", "numpy>=2.0", "pandas>=2.2.2", "polytope-client>=0.7.1", "xarray>=2024.10"]
+dependencies = ["attrs>=23.1", "cfgrib>=0.9.10.4", "dask>=2026.8.0", "ecmwf-datastores-client>=0.1", "ecmwf-opendata>=0.2", "numpy>=2.0", "pandas>=2.2.2", "polytope-client>=0.7.1", "xarray>=2025.6", "zarr>=3.1.6"]
 description = "Xarray backend to access ECMWF datastores"
 dynamic = ["version"]
 license = "Apache-2.0"
@@ -49,7 +47,7 @@ branch = true
 
 [tool.deptry.per_rule_ignores]
 DEP001 = ["cartopy", "matplotlib"]
-DEP002 = ["cfgrib"]
+DEP002 = ["cfgrib", "dask", "zarr"]
 
 [tool.mypy]
 strict = true
