@@ -270,22 +270,15 @@ class CdsapiRequestChunker:
 
             da = da.expand_dims(dims, axis=axis)
 
-            out = da.isel(selection).values
-
             # horrible workaround for the crazy CDS / MARS convention to return
             # a short request at the start of a dataset (at least on ERA5 and ERA5 Land)
             if self.time_dim in indices and indices[self.time_dim] == 0:
-                if isinstance(self.chunks[self.time_dim], int):
-                    time_chunk = self.chunks[self.time_dim]
-                else:
-                    time_chunk = self.chunks[self.time_dim][0]  # type: ignore
-                if da.coords[self.time_dim].size < time_chunk:
-                    expected_time_dim_size = self.chunks[self.time_dim]
-                    assert isinstance(expected_time_dim_size, int)
-                    fixed = np.empty((expected_time_dim_size,) + out.shape[1:])
-                    offset = fixed.shape[0] - out.shape[0]
-                    fixed[offset:] = out
-                    fixed[:offset] = np.nan
-                    out = fixed
+                time_chunk = self.chunks[self.time_dim]
+                if not isinstance(time_chunk, int):
+                    time_chunk = time_chunk[0]
+                missing = time_chunk - da.sizes[self.time_dim]
+                if missing > 0:
+                    # pad before selecting, as the selection refers to the full chunk
+                    da = da.pad({self.time_dim: (missing, 0)})
 
-            return out
+            return da.isel(selection).values
