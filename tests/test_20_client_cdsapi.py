@@ -12,26 +12,26 @@ import xarray as xr
 pytest.importorskip("xarray", minversion="2025.6")
 
 # CDS can return fewer time steps than requested for the first request of a
-# dataset: ERA5-Land has no 1950-01-01 00:00. xarray-ecmwf must return NaN for
-# the missing step and the right value for every other step.
+# dataset: ERA5-Land hourly has no 1950-01-01 00:00. xarray-ecmwf must return
+# NaN for the missing step and the right value for every other step.
 DATE_REQUEST = {
     "dataset": "dummy-dataset",
     "variable": ["dummy_variable"],
-    "date": ["1950-01-01/1950-01-09"],
-    "time": ["00:00"],
+    "date": ["1950-01-01/1950-01-04"],
+    "time": ["00:00", "01:00", "02:00"],
 }
 YMD_REQUEST = {
     "dataset": "dummy-dataset",
     "variable": ["dummy_variable"],
     "year": ["1950"],
-    "month": ["01", "02", "03"],
+    "month": ["01", "02"],
     "day": ["01", "02"],
-    "time": ["00:00"],
+    "time": ["00:00", "01:00", "02:00"],
 }
-# the first day of the fake dataset, like ERA5-Land
-DATASET_START = pd.Timestamp("1950-01-02")
-# the value of the first requested day is missing
-EXPECTED = np.array([np.nan, 1, 2, 3, 4, 5, 6, 7, 8], dtype="float32")
+# the first step of the fake dataset, like ERA5-Land
+DATASET_START = pd.Timestamp("1950-01-01 01:00")
+# the value of the first requested hour is missing
+EXPECTED = np.array([np.nan, 1, 2, 24, 25, 26, 48, 49, 50, 72, 73, 74])
 
 
 # the request itself is the result, downloaded as JSON
@@ -55,14 +55,14 @@ def as_list(value: str | list[str]) -> list[str]:
     return [value] if isinstance(value, str) else value
 
 
-# one field per day, the value is the days since 1950-01-01
+# one field per hour, the value is the hours since 1950-01-01 00:00
 def open_missing_first_step(path: str, **kwargs: Any) -> xr.Dataset:
     request = json.loads(Path(path).read_text())
     if "date" in request:
         start, stop = as_list(request["date"])[0].split("/")
-        time = pd.date_range(start, stop, freq="D")
+        days = pd.date_range(start, stop, freq="D")
     else:
-        time = pd.DatetimeIndex(
+        days = pd.DatetimeIndex(
             [
                 f"{year}-{month}-{day}"
                 for year in as_list(request["year"])
@@ -70,9 +70,12 @@ def open_missing_first_step(path: str, **kwargs: Any) -> xr.Dataset:
                 for day in as_list(request["day"])
             ]
         )
+    time = pd.DatetimeIndex(
+        [f"{day:%Y-%m-%d} {hour}" for day in days for hour in request["time"]]
+    )
     time = time[time >= DATASET_START]
-    days = (time - pd.Timestamp("1950-01-01")).days.to_numpy(dtype="float32")
-    values = np.broadcast_to(days[:, None, None], (len(time), 2, 3))
+    hours = (time - pd.Timestamp("1950-01-01")) / pd.Timedelta("1h")
+    values = np.broadcast_to(hours.to_numpy()[:, None, None], (len(time), 2, 3))
     return xr.Dataset(
         {"dummy": (("time", "latitude", "longitude"), values)},
         coords={"time": time, "latitude": [10.0, 0.0], "longitude": [0.0, 1.0, 2.0]},
@@ -96,16 +99,16 @@ def open_dummy_dataset(
 @pytest.mark.parametrize(
     "time_key",
     [
-        slice(0, 3),  # the whole first chunk
-        slice(1, 3),  # first chunk, starting after the missing step
-        slice(0, 2),  # first chunk, stopping before its end
-        2,  # a single step
+        slice(0, 6),  # the whole first chunk
+        slice(1, 6),  # first chunk, starting after the missing step
+        slice(0, 4),  # first chunk, stopping before its end
+        4,  # a single step
     ],
 )
 def test_first_chunk_read_returns_requested_steps(
     tmp_path: Path, time_key: int | slice
 ) -> None:
-    ds = open_dummy_dataset(DATE_REQUEST, {"day": 3}, tmp_path)
+    ds = open_dummy_dataset(DATE_REQUEST, {"day": 2}, tmp_path)
 
     res = ds["dummy"].isel(time=time_key, latitude=0, longitude=0).values
 
@@ -113,7 +116,7 @@ def test_first_chunk_read_returns_requested_steps(
 
 
 def test_shifted_read_returns_next_step_values(tmp_path: Path) -> None:
-    ds = open_dummy_dataset(DATE_REQUEST, {"day": 3}, tmp_path)
+    ds = open_dummy_dataset(DATE_REQUEST, {"day": 2}, tmp_path)
     # dask turns the lazy shift into a read of the first chunk starting at index 1
     da = ds["dummy"].shift(time=-1).isel(time=slice(None, -1))
 
@@ -128,4 +131,6 @@ def test_month_chunked_read_returns_requested_steps(tmp_path: Path) -> None:
 
     res = ds["dummy"].isel(latitude=0, longitude=0).values
 
-    assert np.array_equal(res, [np.nan, 1, 31, 32, 59, 60], equal_nan=True)
+    # 1950-02-01 is 744 hours after 1950-01-01
+    expected = [np.nan, 1, 2, 24, 25, 26, 744, 745, 746, 768, 769, 770]
+    assert np.array_equal(res, expected, equal_nan=True)
