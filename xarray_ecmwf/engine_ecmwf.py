@@ -1,8 +1,10 @@
 import contextlib
+import errno
 import functools
 import hashlib
 import logging
 import os
+import shutil
 import socket
 import uuid
 from typing import Any, Callable, Iterable, Iterator, Sequence
@@ -51,6 +53,16 @@ class ECMWFBackendArray(xr.backends.BackendArray):
         return out
 
 
+def remove_file_or_folder(path: str) -> None:
+    if os.path.isdir(path):
+        shutil.rmtree(path, ignore_errors=True)
+    else:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
 def robust_save_to_file(
     saver: Callable[..., Any], args: Sequence[Any], path: str
 ) -> None:
@@ -59,13 +71,16 @@ def robust_save_to_file(
     try:
         saver(*args, tmp_path)
     except Exception as ex:
-        try:
-            os.remove(tmp_path)
-        except Exception:
-            pass
+        remove_file_or_folder(tmp_path)
         raise ex
 
-    os.rename(tmp_path, path)
+    try:
+        os.rename(tmp_path, path)
+    except OSError as ex:
+        remove_file_or_folder(tmp_path)
+        # another process saved it first and it can't be replaced: keep that one
+        if ex.errno not in (errno.EEXIST, errno.ENOTEMPTY):
+            raise ex
 
 
 @attrs.define(slots=False)
@@ -147,7 +162,11 @@ class DatasetCacher:
                         # NOTE: be sure that read_ds is chunked so compute=False only
                         #   writes the metadata. Some open_dataset
                         read_ds = read_ds.chunk()
-                        read_ds.to_zarr(path, compute=False)
+                        # every process writes its own copy, and the first one
+                        #   renamed into place is the one everybody opens
+                        robust_save_to_file(
+                            functools.partial(read_ds.to_zarr, compute=False), (), path
+                        )
         yield xr.open_dataset(path, engine="zarr")
 
 
