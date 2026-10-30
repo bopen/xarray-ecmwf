@@ -8,9 +8,6 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-# writing the schema sample with zarr 3 needs xarray >= 2025.6
-pytest.importorskip("xarray", minversion="2025.6")
-
 # CDS can return fewer time steps than requested for the first request of a
 # dataset: ERA5-Land hourly has no 1950-01-01 00:00. xarray-ecmwf must return
 # NaN for the missing step and the right value for every other step.
