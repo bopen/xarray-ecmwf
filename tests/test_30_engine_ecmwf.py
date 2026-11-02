@@ -150,6 +150,16 @@ def test_cache_data_files_false_leaves_a_kept_file_alone(tmp_path: Path) -> None
     assert kept.read_text() == "kept by a run with cache_data_files=True"
 
 
+def test_open_dataset_names_the_new_key_for_cache_file() -> None:
+    with pytest.raises(TypeError, match="renamed to 'cache_data_files'"):
+        xr.open_dataset(
+            REQUEST,  # type: ignore
+            engine="ecmwf",
+            request_client_class=DummyClient,
+            cache_kwargs={"cache_file": False},
+        )
+
+
 def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(client, open_dummy, cache_folder=str(tmp_path))

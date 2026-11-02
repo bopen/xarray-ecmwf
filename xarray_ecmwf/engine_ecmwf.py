@@ -181,6 +181,10 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
+        if "cache_file" in cache_kwargs:
+            raise TypeError(
+                "cache_kwargs 'cache_file' was renamed to 'cache_data_files'"
+            )
         request_client_class = request_client_class or SUPPORTED_CLIENTS[client]
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
