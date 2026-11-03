@@ -87,19 +87,14 @@ def robust_save_to_file(
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
     open_dataset: Callable[..., xr.Dataset] = xr.open_dataset
-    cache_file: bool = True
+    cache_data_files: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
     @contextlib.contextmanager
-    def retrieve(
-        self,
-        request: dict[str, Any],
-        override_cache_file: bool | None = None,
-        tries: int = 2,
-    ) -> Iterator[xr.Dataset]:
+    def retrieve(self, request: dict[str, Any], tries: int = 2) -> Iterator[xr.Dataset]:
         for try_ in range(tries):
             try:
-                with self.retrieve_once(request, override_cache_file) as ds:
+                with self.retrieve_once(request) as ds:
                     yield ds
                 break
             except RuntimeError:
@@ -108,18 +103,12 @@ class DatasetCacher:
             raise RuntimeError(f"too many retries {tries}")
 
     @contextlib.contextmanager
-    def retrieve_once(
-        self, request: dict[str, Any], override_cache_file: bool | None = None
-    ) -> Iterator[xr.Dataset]:
+    def retrieve_once(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
         LOGGER.info(f"retrieving {request}")
-        cache_file = self.cache_file
-        if override_cache_file is not None:
-            cache_file = override_cache_file
-
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
         path = os.path.join(self.cache_folder, filename)
-        if not cache_file:
+        if not self.cache_data_files:
             # a name only this call knows, so no other reader can use or delete it
             root, ext = os.path.splitext(path)
             path = f"{root}-{str(uuid.uuid4())[:8]}{ext}"
@@ -135,7 +124,7 @@ class DatasetCacher:
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             yield ds
         finally:
-            if not cache_file:
+            if not self.cache_data_files:
                 try:
                     os.remove(path)
                     # remove the associated cfgrib index file
@@ -144,7 +133,7 @@ class DatasetCacher:
                     except Exception:
                         pass
                 except Exception:
-                    LOGGER.exception("While removing a cache file")
+                    LOGGER.exception("While removing a data file")
 
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
@@ -192,6 +181,10 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
+        if "cache_file" in cache_kwargs:
+            raise TypeError(
+                "cache_kwargs 'cache_file' was renamed to 'cache_data_files'"
+            )
         request_client_class = request_client_class or SUPPORTED_CLIENTS[client]
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
@@ -200,7 +193,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             filename_or_obj, request_chunks, **request_chunker_kwargs
         )
         open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
-        if not cache_kwargs.get("cache_file", True):
+        if not cache_kwargs.get("cache_data_files", True):
             open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
         open_dataset = functools.partial(open_dataset, **open_dataset_kwargs)

@@ -101,14 +101,14 @@ def test_robust_save_to_file_raises_when_a_file_can_not_be_renamed(
     assert os.listdir(tmp_path) == ["a.grib"]
 
 
-# with cache_file=False each read downloads a file of its own and deletes only
+# with cache_data_files=False each read downloads a file of its own and deletes only
 # that one, so readers of the same request don't delete each other's files.
 
 
-def test_cache_file_false_readers_keep_their_own_files(tmp_path: Path) -> None:
+def test_cache_data_files_false_readers_keep_their_own_files(tmp_path: Path) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(
-        client, open_dummy, cache_file=False, cache_folder=str(tmp_path)
+        client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
     )
 
     # two readers of the same request at the same time
@@ -121,11 +121,11 @@ def test_cache_file_false_readers_keep_their_own_files(tmp_path: Path) -> None:
     assert os.listdir(tmp_path) == []
 
 
-def test_cache_file_false_removes_a_file_that_cannot_be_opened(
+def test_cache_data_files_false_removes_a_file_that_cannot_be_opened(
     tmp_path: Path,
 ) -> None:
     cacher = engine_ecmwf.DatasetCacher(
-        DummyClient({}), open_broken, cache_file=False, cache_folder=str(tmp_path)
+        DummyClient({}), open_broken, cache_data_files=False, cache_folder=str(tmp_path)
     )
 
     with pytest.raises(ValueError):
@@ -135,22 +135,32 @@ def test_cache_file_false_removes_a_file_that_cannot_be_opened(
     assert os.listdir(tmp_path) == []
 
 
-def test_cache_file_false_leaves_a_kept_file_alone(tmp_path: Path) -> None:
+def test_cache_data_files_false_leaves_a_kept_file_alone(tmp_path: Path) -> None:
     client = DummyClient({})
     kept = tmp_path / "request.grib"
-    kept.write_text("kept by a run with cache_file=True")
+    kept.write_text("kept by a run with cache_data_files=True")
     cacher = engine_ecmwf.DatasetCacher(
-        client, open_dummy, cache_file=False, cache_folder=str(tmp_path)
+        client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
     )
 
     with cacher.retrieve_once(REQUEST):
         pass
 
     assert client.downloads == 1
-    assert kept.read_text() == "kept by a run with cache_file=True"
+    assert kept.read_text() == "kept by a run with cache_data_files=True"
 
 
-def test_cache_file_true_reuses_and_keeps_the_file(tmp_path: Path) -> None:
+def test_open_dataset_names_the_new_key_for_cache_file() -> None:
+    with pytest.raises(TypeError, match="renamed to 'cache_data_files'"):
+        xr.open_dataset(
+            REQUEST,  # type: ignore
+            engine="ecmwf",
+            request_client_class=DummyClient,
+            cache_kwargs={"cache_file": False},
+        )
+
+
+def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(client, open_dummy, cache_folder=str(tmp_path))
 
