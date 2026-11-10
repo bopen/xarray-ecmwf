@@ -181,16 +181,19 @@ class DatasetCacher:
         #   while this one opens it. For an instant it's missing, and chunks read
         #   in that instant come back as NaN with no error. So if the folder isn't
         #   the same after the open, wait and open it again
-        for try_ in range(3):
+        tries = 3
+        for try_ in range(tries):
             if try_:
                 time.sleep(1)
             with contextlib.suppress(FileNotFoundError):
-                inode = os.stat(path).st_ino
+                before = os.stat(path)
                 ds = xr.open_dataset(path, engine="zarr")
-                if os.stat(path).st_ino == inode:
+                if os.path.samestat(before, os.stat(path)):
                     break
         else:
-            raise RuntimeError(f"{path} was missing or replaced at each of 3 opens")
+            raise RuntimeError(
+                f"{path} was missing or replaced at each of {tries} opens"
+            )
         yield ds
 
 

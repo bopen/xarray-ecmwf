@@ -1,4 +1,3 @@
-import glob
 import os
 import shutil
 import time
@@ -206,8 +205,8 @@ def test_override_schema_files_rebuilds_the_schema_file(tmp_path: Path) -> None:
 def test_override_schema_files_repairs_a_broken_schema_file(tmp_path: Path) -> None:
     open_schema_dataset(tmp_path)
     # break the schema file: empty one of its chunks
-    (chunk,) = glob.glob(str(tmp_path / "*.zarr" / "time" / "c" / "*"))
-    open(chunk, "wb").close()
+    (chunk,) = tmp_path.glob("*.zarr/time/c/*")
+    chunk.write_bytes(b"")
     with pytest.raises(RuntimeError, match="decompression"):
         open_schema_dataset(tmp_path)
 
@@ -217,45 +216,33 @@ def test_override_schema_files_repairs_a_broken_schema_file(tmp_path: Path) -> N
     assert open_schema_dataset(tmp_path)["time"].values.tolist() == [0, 1, 2]
 
 
-def test_cached_schema_dataset_opens_again_a_schema_file_missing_for_an_instant(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+# what another process does during the first open: the schema file is missing
+# for an instant, or replaced as with override_schema_files
+def make_it_missing(path: str) -> None:
+    raise FileNotFoundError(path)
+
+
+def replace_it(path: str) -> None:
+    engine_ecmwf.robust_save_to_file(shutil.copytree, (path,), path, replace=True)
+
+
+@pytest.mark.parametrize("another_process", [make_it_missing, replace_it])
+def test_cached_schema_dataset_opens_again_a_schema_file_missing_or_replaced(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    another_process: Callable[[str], None],
 ) -> None:
     open_schema_dataset(tmp_path)
     open_dataset = xr.open_dataset
     opened = []
 
-    def open_while_another_process_replaces_it(path: Any, **kwargs: Any) -> Any:
+    def open_during_another_process(path: Any, **kwargs: Any) -> Any:
         opened.append(path)
         if len(opened) == 1:
-            raise FileNotFoundError(path)
+            another_process(path)
         return open_dataset(path, **kwargs)
 
-    monkeypatch.setattr(xr, "open_dataset", open_while_another_process_replaces_it)
-    monkeypatch.setattr(time, "sleep", lambda seconds: None)
-
-    open_schema_dataset(tmp_path)
-
-    assert len(opened) == 2
-
-
-def test_cached_schema_dataset_opens_again_a_schema_file_replaced_during_the_open(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    open_schema_dataset(tmp_path)
-    open_dataset = xr.open_dataset
-    opened = []
-
-    def open_while_another_process_replaces_it(path: Any, **kwargs: Any) -> Any:
-        opened.append(path)
-        ds = open_dataset(path, **kwargs)
-        if len(opened) == 1:
-            # another process puts its own copy in place, as override_schema_files
-            shutil.copytree(path, path + ".new")
-            os.rename(path, path + ".old")
-            os.rename(path + ".new", path)
-        return ds
-
-    monkeypatch.setattr(xr, "open_dataset", open_while_another_process_replaces_it)
+    monkeypatch.setattr(xr, "open_dataset", open_during_another_process)
     monkeypatch.setattr(time, "sleep", lambda seconds: None)
 
     open_schema_dataset(tmp_path)
