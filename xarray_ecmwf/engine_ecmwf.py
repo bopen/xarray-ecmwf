@@ -6,8 +6,10 @@ import logging
 import os
 import shutil
 import socket
+import time
 import uuid
-from typing import Any, Callable, Iterable, Iterator, Sequence
+from collections.abc import Generator
+from typing import Any, Callable, Iterable, Sequence
 
 import attrs
 import numpy as np
@@ -64,9 +66,10 @@ def remove_file_or_folder(path: str) -> None:
 
 
 def robust_save_to_file(
-    saver: Callable[..., Any], args: Sequence[Any], path: str
+    saver: Callable[..., Any], args: Sequence[Any], path: str, replace: bool = False
 ) -> None:
     tmp_path = path + "." + str(uuid.uuid4())[:8]
+    old_path = tmp_path + ".old"
 
     try:
         saver(*args, tmp_path)
@@ -75,12 +78,19 @@ def robust_save_to_file(
         raise ex
 
     try:
+        if replace:
+            # a folder can't be renamed onto a non-empty one: move the old one aside
+            with contextlib.suppress(FileNotFoundError):
+                os.rename(path, old_path)
         os.rename(tmp_path, path)
     except OSError as ex:
         remove_file_or_folder(tmp_path)
         # another process saved it first and it can't be replaced: keep that one
         if ex.errno not in (errno.EEXIST, errno.ENOTEMPTY):
             raise ex
+    finally:
+        if replace:
+            remove_file_or_folder(old_path)
 
 
 @attrs.define(slots=False)
@@ -89,9 +99,12 @@ class DatasetCacher:
     open_dataset: Callable[..., xr.Dataset] = xr.open_dataset
     cache_data_files: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
+    override_schema_files: bool = False
 
     @contextlib.contextmanager
-    def retrieve(self, request: dict[str, Any], tries: int = 2) -> Iterator[xr.Dataset]:
+    def retrieve(
+        self, request: dict[str, Any], tries: int = 2
+    ) -> Generator[xr.Dataset]:
         for try_ in range(tries):
             try:
                 with self.retrieve_once(request) as ds:
@@ -103,7 +116,7 @@ class DatasetCacher:
             raise RuntimeError(f"too many retries {tries}")
 
     @contextlib.contextmanager
-    def retrieve_once(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
+    def retrieve_once(self, request: dict[str, Any]) -> Generator[xr.Dataset]:
         LOGGER.info(f"retrieving {request}")
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
@@ -136,8 +149,8 @@ class DatasetCacher:
                     LOGGER.exception("While removing a data file")
 
     @contextlib.contextmanager
-    def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
-        LOGGER.info(f"cached_empty_dataset {request}")
+    def cached_schema_dataset(self, request: dict[str, Any]) -> Generator[xr.Dataset]:
+        LOGGER.info(f"cached_schema_dataset {request}")
         request_stable = {k: v for k, v in request.items() if k != "download_format"}
         filename = (
             hashlib.md5(str(request_stable).encode("utf-8")).hexdigest() + ".zarr"
@@ -147,20 +160,38 @@ class DatasetCacher:
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
-        if not os.path.exists(path):
+        if self.override_schema_files or not os.path.exists(path):
             with self.retrieve(request) as read_ds:
                 # check again as the retrieve may be long
                 with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):
-                    if not os.path.exists(path):
+                    if self.override_schema_files or not os.path.exists(path):
                         # NOTE: be sure that read_ds is chunked so compute=False only
                         #   writes the metadata. Some open_dataset
                         read_ds = read_ds.chunk()
                         # every process writes its own copy, and the first one
-                        #   renamed into place is the one everybody opens
+                        #   renamed into place is the one everybody opens, unless
+                        #   with override_schema_files it replaces the one there
                         robust_save_to_file(
-                            functools.partial(read_ds.to_zarr, compute=False), (), path
+                            functools.partial(read_ds.to_zarr, compute=False),
+                            (),
+                            path,
+                            replace=self.override_schema_files,
                         )
-        yield xr.open_dataset(path, engine="zarr")
+        # another process with override_schema_files can replace the schema file
+        #   while this one opens it. For an instant it's missing, and chunks read
+        #   in that instant come back as NaN with no error. So if the folder isn't
+        #   the same after the open, wait and open it again
+        for try_ in range(3):
+            if try_:
+                time.sleep(1)
+            with contextlib.suppress(FileNotFoundError):
+                inode = os.stat(path).st_ino
+                ds = xr.open_dataset(path, engine="zarr")
+                if os.stat(path).st_ino == inode:
+                    break
+        else:
+            raise RuntimeError(f"{path} was missing or replaced at each of 3 opens")
+        yield ds
 
 
 class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):

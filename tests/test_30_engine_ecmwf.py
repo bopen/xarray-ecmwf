@@ -1,6 +1,9 @@
+import glob
 import os
+import shutil
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pytest
@@ -41,20 +44,32 @@ def open_broken(path: str, **kwargs: Any) -> xr.Dataset:
     raise ValueError(f"can't open {path}")
 
 
-# several processes can build the same .zarr schema sample at once: each one
+# a dataset opened with an attribute telling which version of the data it holds
+def open_version(version: int) -> Callable[..., xr.Dataset]:
+    def open_dataset(path: str, **kwargs: Any) -> xr.Dataset:
+        return open_dummy(path).assign_attrs(version=version)
+
+    return open_dataset
+
+
+def open_schema_dataset(
+    cache_folder: Path,
+    open_dataset: Callable[..., xr.Dataset] = open_dummy,
+    **cache_kwargs: Any,
+) -> xr.Dataset:
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}), open_dataset, cache_folder=str(cache_folder), **cache_kwargs
+    )
+    with cacher.cached_schema_dataset(REQUEST) as ds:
+        return ds
+
+
+# several processes can build the same .zarr schema file at once: each one
 # writes its own copy under a temporary name, and the first copy renamed into
 # place is the one everybody opens.
 
 
-def open_sample(cache_folder: Path) -> xr.Dataset:
-    cacher = engine_ecmwf.DatasetCacher(
-        DummyClient({}), open_dummy, cache_folder=str(cache_folder)
-    )
-    with cacher.cached_empty_dataset(REQUEST) as ds:
-        return ds
-
-
-def test_cached_empty_dataset_keeps_the_sample_saved_first(
+def test_cached_schema_dataset_keeps_the_schema_file_saved_first(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     to_zarr = xr.Dataset.to_zarr
@@ -62,14 +77,14 @@ def test_cached_empty_dataset_keeps_the_sample_saved_first(
     def to_zarr_after_another_process(
         self: xr.Dataset, store: Any, *args: Any, **kw: Any
     ) -> Any:
-        sample = os.path.splitext(store)[0]
-        # another process saves its complete sample while this one is writing
-        to_zarr(self.assign_attrs(saved_by="another process"), sample, *args, **kw)
+        final_path = os.path.splitext(store)[0]
+        # another process saves its complete schema file while this one is writing
+        to_zarr(self.assign_attrs(saved_by="another process"), final_path, *args, **kw)
         return to_zarr(self, store, *args, **kw)
 
     monkeypatch.setattr(xr.Dataset, "to_zarr", to_zarr_after_another_process)
 
-    ds = open_sample(tmp_path)
+    ds = open_schema_dataset(tmp_path)
 
     assert ds.attrs["saved_by"] == "another process"
     assert len([name for name in os.listdir(tmp_path) if ".zarr" in name]) == 1
@@ -171,3 +186,96 @@ def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None
 
     assert client.downloads == 1
     assert os.listdir(tmp_path) == ["request.grib"]
+
+
+# with override_schema_files each open builds the schema file again and puts it
+# in place of the old one.
+
+
+def test_override_schema_files_rebuilds_the_schema_file(tmp_path: Path) -> None:
+    open_schema_dataset(tmp_path, open_version(1))
+
+    ds = open_schema_dataset(tmp_path, open_version(2), override_schema_files=True)
+
+    assert ds.attrs["version"] == 2
+    # later opens without the override use the new one
+    assert open_schema_dataset(tmp_path, open_version(3)).attrs["version"] == 2
+    assert len([name for name in os.listdir(tmp_path) if ".zarr" in name]) == 1
+
+
+def test_override_schema_files_repairs_a_broken_schema_file(tmp_path: Path) -> None:
+    open_schema_dataset(tmp_path)
+    # break the schema file: empty one of its chunks
+    (chunk,) = glob.glob(str(tmp_path / "*.zarr" / "time" / "c" / "*"))
+    open(chunk, "wb").close()
+    with pytest.raises(RuntimeError, match="decompression"):
+        open_schema_dataset(tmp_path)
+
+    open_schema_dataset(tmp_path, override_schema_files=True)
+
+    # later opens without the override use the repaired one
+    assert open_schema_dataset(tmp_path)["time"].values.tolist() == [0, 1, 2]
+
+
+def test_cached_schema_dataset_opens_again_a_schema_file_missing_for_an_instant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    open_schema_dataset(tmp_path)
+    open_dataset = xr.open_dataset
+    opened = []
+
+    def open_while_another_process_replaces_it(path: Any, **kwargs: Any) -> Any:
+        opened.append(path)
+        if len(opened) == 1:
+            raise FileNotFoundError(path)
+        return open_dataset(path, **kwargs)
+
+    monkeypatch.setattr(xr, "open_dataset", open_while_another_process_replaces_it)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
+
+    open_schema_dataset(tmp_path)
+
+    assert len(opened) == 2
+
+
+def test_cached_schema_dataset_opens_again_a_schema_file_replaced_during_the_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    open_schema_dataset(tmp_path)
+    open_dataset = xr.open_dataset
+    opened = []
+
+    def open_while_another_process_replaces_it(path: Any, **kwargs: Any) -> Any:
+        opened.append(path)
+        ds = open_dataset(path, **kwargs)
+        if len(opened) == 1:
+            # another process puts its own copy in place, as override_schema_files
+            shutil.copytree(path, path + ".new")
+            os.rename(path, path + ".old")
+            os.rename(path + ".new", path)
+        return ds
+
+    monkeypatch.setattr(xr, "open_dataset", open_while_another_process_replaces_it)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
+
+    open_schema_dataset(tmp_path)
+
+    assert len(opened) == 2
+
+
+def test_cached_schema_dataset_gives_up_on_a_schema_file_that_stays_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    open_schema_dataset(tmp_path)
+
+    def open_missing(path: Any, **kwargs: Any) -> Any:
+        raise FileNotFoundError(path)
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(xr, "open_dataset", open_missing)
+    monkeypatch.setattr(time, "sleep", sleeps.append)
+
+    with pytest.raises(RuntimeError, match="missing or replaced at each of 3 opens"):
+        open_schema_dataset(tmp_path)
+    # no wait after the last open
+    assert sleeps == [1, 1]
