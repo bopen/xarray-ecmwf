@@ -255,7 +255,7 @@ class CdsapiRequestChunker:
         for dim, dim_index in self.chunked_coords.items():
             if dim in da.dims:
                 desired_order = [v for v in dim_index.values if v in da[dim]]
-                # Skip when the decode is short (e.g. padded time) or labels differ.
+                # Same-size only: skip padded dims when the chunk lacks some request labels (e.g. time).
                 if len(desired_order) != da.sizes[dim]:
                     continue
                 if len(desired_order) == 0:
