@@ -8,6 +8,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from xarray_ecmwf.client_cdsapi import CdsapiRequestChunker
+
 # CDS can return fewer time steps than requested for the first request of a
 # dataset: ERA5-Land hourly has no 1950-01-01 00:00. xarray-ecmwf must return
 # NaN for the missing step and the right value for every other step.
@@ -131,3 +133,29 @@ def test_month_chunked_read_returns_requested_steps(tmp_path: Path) -> None:
     # 1950-02-01 is 744 hours after 1950-01-01
     expected = [np.nan, 1, 2, 24, 25, 26, 744, 745, 746, 768, 769, 770]
     assert np.array_equal(res, expected, equal_nan=True)
+
+
+def test_ensure_dimensions_values_order_realigns_descending_pressure() -> None:
+    chunker = CdsapiRequestChunker(
+        {
+            "dataset": "dummy-dataset",
+            "variable": ["dummy_variable"],
+            "pressure_level": ["1", "2"],
+            "year": ["2010"],
+            "month": ["01"],
+            "day": ["01"],
+            "time": ["00:00"],
+        },
+        {"pressure_level": 2},
+    )
+    chunker.compute_chunked_request_coords()
+    da = xr.DataArray(
+        [[1.0, 2.0], [3.0, 4.0]],
+        dims=("isobaricInhPa", "x"),
+        coords={"isobaricInhPa": [2, 1]},
+    )
+
+    aligned = chunker.ensure_dimensions_values_order(da)
+
+    assert list(aligned.isobaricInhPa.values) == [1, 2]
+    assert np.array_equal(aligned.values, np.array([[3.0, 4.0], [1.0, 2.0]]))
