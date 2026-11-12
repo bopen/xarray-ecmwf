@@ -256,9 +256,7 @@ class CdsapiRequestChunker:
             if dim in da.dims:
                 desired_order = [v for v in dim_index.values if v in da[dim]]
                 # Same-size only: skip padded dims when the chunk lacks some request labels (e.g. time).
-                if len(desired_order) != da.sizes[dim]:
-                    continue
-                if len(desired_order) == 0:
+                if len(desired_order) != da.sizes[dim] or len(desired_order) == 0:
                     continue
                 da = da.reindex({dim: desired_order})
         return da
