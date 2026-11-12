@@ -255,6 +255,11 @@ class CdsapiRequestChunker:
         for dim, dim_index in self.chunked_coords.items():
             if dim in da.dims:
                 desired_order = [v for v in dim_index.values if v in da[dim]]
+                # Skip when the decode is short (e.g. padded time) or labels differ.
+                if len(desired_order) != da.sizes[dim]:
+                    continue
+                if len(desired_order) == 0:
+                    continue
                 da = da.reindex({dim: desired_order})
         return da
 
