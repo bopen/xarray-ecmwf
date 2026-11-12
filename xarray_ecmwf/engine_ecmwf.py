@@ -127,11 +127,6 @@ class DatasetCacher:
             if not self.cache_data_files:
                 try:
                     os.remove(path)
-                    # remove the associated cfgrib index file
-                    try:
-                        os.remove(path + ".idx")
-                    except Exception:
-                        pass
                 except Exception:
                     LOGGER.exception("While removing a data file")
 
