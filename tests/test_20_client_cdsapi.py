@@ -81,15 +81,27 @@ def open_missing_first_step(path: str, **kwargs: Any) -> xr.Dataset:
     )
 
 
+EXPERIMENTS = ["ssp1-2.6", "ssp3-7.0"]
+
+
+# as open_missing_first_step, plus 1000 per experiment to tell them apart
+def open_experiment(path: str, **kwargs: Any) -> xr.Dataset:
+    (experiment,) = as_list(json.loads(Path(path).read_text())["experiment"])
+    return open_missing_first_step(path) + 1000 * EXPERIMENTS.index(experiment)
+
+
 def open_dummy_dataset(
-    request: dict[str, Any], request_chunks: dict[str, int], cache_folder: Path
+    request: dict[str, Any],
+    request_chunks: dict[str, int],
+    cache_folder: Path,
+    open_dataset: Any = open_missing_first_step,
 ) -> xr.Dataset:
     return xr.open_dataset(
         request,  # type: ignore
         engine="ecmwf",
         request_chunks=request_chunks,
         request_client_class=MissingFirstStepClient,
-        open_dataset=open_missing_first_step,
+        open_dataset=open_dataset,
         cache_kwargs={"cache_folder": str(cache_folder)},
         chunks={},
     )
@@ -189,3 +201,21 @@ def test_ensure_dimensions_values_order_realigns_descending_pressure() -> None:
 
     assert list(aligned.isobaricInhPa.values) == [1, 2]
     assert np.array_equal(aligned.values, np.array([[3.0, 4.0], [1.0, 2.0]]))
+
+
+def test_experiment_chunks_request_one_experiment_each(tmp_path: Path) -> None:
+    request = DATE_REQUEST | {"experiment": EXPERIMENTS}
+    ds = open_dummy_dataset(
+        request, {"day": 2, "experiment": 1}, tmp_path, open_experiment
+    )
+
+    res = ds["dummy"].isel(latitude=0, longitude=0)
+
+    assert res.dims == ("experiment", "time")
+    assert list(res["experiment"].values) == EXPERIMENTS
+    assert res["experiment"].dtype == object
+    expected = np.stack([EXPECTED, EXPECTED + 1000])
+    assert np.array_equal(res.values, expected, equal_nan=True)
+    # the client downloads each request as JSON: each names a single experiment
+    requests = [json.loads(path.read_text()) for path in tmp_path.glob("*.json")]
+    assert {len(request["experiment"]) for request in requests} == {1}

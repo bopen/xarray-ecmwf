@@ -11,7 +11,15 @@ from . import client_common
 
 LOGGER = logging.getLogger(__name__)
 
-DIMS_ORDER = ("valid_time", "time", "step", "isobaricInhPa", "number", "values")
+DIMS_ORDER = (
+    "experiment",
+    "valid_time",
+    "time",
+    "step",
+    "isobaricInhPa",
+    "number",
+    "values",
+)
 
 
 @attrs.define
@@ -46,6 +54,7 @@ SUPPORTED_REQUEST_DIMENSIONS = [
     "step",
     "pressure_level",
     "levelist",
+    "experiment",
 ]
 
 
@@ -139,6 +148,11 @@ class CdsapiRequestChunker:
         )
         self.maybe_update_coords_and_chunk_info(
             "levelist", "isobaricInhPa", indexer_kwargs={"units": "hPa"}
+        )
+        # Polytope accepts one experiment per request, so configs chunk it by 1.
+        # object, not "<U": zarr v3 stores it as its specified "string" type.
+        self.maybe_update_coords_and_chunk_info(
+            "experiment", "experiment", dtype="object"
         )
         # `number` is last because some CDS datasets do not allow to select
         # ensemble members in the request and always return all of them.
