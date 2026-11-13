@@ -20,7 +20,7 @@ class RequestClientProtocol(Protocol):
 
 
 class DatasetCacherProtocol(Protocol):
-    def retrieve(self, request: dict[str, Any]) -> ContextManager[xr.Dataset]: ...
+    def open_data_file(self, request: dict[str, Any]) -> ContextManager[xr.Dataset]: ...
 
     def cached_empty_dataset(
         self, request: dict[str, Any]

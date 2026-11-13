@@ -90,7 +90,7 @@ class DatasetCacher:
     cache_data_files: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
-    def get_data_file(self, request: dict[str, Any]) -> str:
+    def get_or_download_data_file(self, request: dict[str, Any]) -> str:
         LOGGER.info(f"retrieving {request}")
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
@@ -109,12 +109,14 @@ class DatasetCacher:
         return path
 
     @contextlib.contextmanager
-    def retrieve(self, request: dict[str, Any], tries: int = 2) -> Iterator[xr.Dataset]:
+    def open_data_file(
+        self, request: dict[str, Any], tries: int = 2
+    ) -> Iterator[xr.Dataset]:
         # only the request and the download are tried again, e.g. when polytope
         #   returns an empty file
         for try_ in range(tries):
             try:
-                path = self.get_data_file(request)
+                path = self.get_or_download_data_file(request)
                 break
             except RuntimeError:
                 LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
@@ -145,8 +147,8 @@ class DatasetCacher:
             os.makedirs(self.cache_folder, exist_ok=True)
 
         if not os.path.exists(path):
-            with self.retrieve(request) as read_ds:
-                # check again as the retrieve may be long
+            with self.open_data_file(request) as read_ds:
+                # check again as the download may be long
                 with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):
                     if not os.path.exists(path):
                         # NOTE: be sure that read_ds is chunked so compute=False only
