@@ -188,7 +188,11 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             filename_or_obj, request_chunks, **request_chunker_kwargs
         )
         open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
-        if not cache_kwargs.get("cache_data_files", True):
+        if (
+            not cache_kwargs.get("cache_data_files", True)
+            and open_dataset_kwargs["engine"] == "cfgrib"
+        ):
+            # indexpath is a cfgrib option: other engines fail on it
             open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
         open_dataset = functools.partial(open_dataset, **open_dataset_kwargs)

@@ -160,6 +160,29 @@ def test_open_dataset_names_the_new_key_for_cache_file() -> None:
         )
 
 
+# indexpath is a cfgrib option: other engines, e.g. h5netcdf, fail on it
+@pytest.mark.parametrize("engine, indexpath", [("cfgrib", ""), ("h5netcdf", None)])
+def test_open_dataset_passes_indexpath_only_to_cfgrib(
+    tmp_path: Path, engine: str, indexpath: str | None
+) -> None:
+    indexpaths = []
+
+    def open_recording_indexpath(path: str, **kwargs: Any) -> xr.Dataset:
+        indexpaths.append(kwargs.get("indexpath"))
+        return open_dummy(path)
+
+    xr.open_dataset(
+        REQUEST,  # type: ignore
+        engine="ecmwf",
+        request_client_class=DummyClient,
+        cache_kwargs={"cache_folder": str(tmp_path), "cache_data_files": False},
+        open_dataset_kwargs={"engine": engine},
+        open_dataset=open_recording_indexpath,
+    )
+
+    assert indexpaths == [indexpath]
+
+
 def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(client, open_dummy, cache_folder=str(tmp_path))

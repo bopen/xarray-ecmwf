@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from xarray_ecmwf.client_cdsapi import CdsapiRequestChunker
+from xarray_ecmwf.client_cdsapi import CdsapiRequestChunker, CdsapiRequestClient
 
 # CDS can return fewer time steps than requested for the first request of a
 # dataset: ERA5-Land hourly has no 1950-01-01 00:00. xarray-ecmwf must return
@@ -133,6 +133,36 @@ def test_month_chunked_read_returns_requested_steps(tmp_path: Path) -> None:
     # 1950-02-01 is 744 hours after 1950-01-01
     expected = [np.nan, 1, 2, 24, 25, 26, 744, 745, 746, 768, 769, 770]
     assert np.array_equal(res, expected, equal_nan=True)
+
+
+def test_submit_adds_grib_format_only_when_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeDatastoreClient:
+        def __init__(self, **_kwargs: Any) -> None:
+            pass
+
+        def submit_and_wait_on_results(
+            self, dataset: str, request: dict[str, Any]
+        ) -> Any:
+            captured["request"] = request
+            return request
+
+    monkeypatch.setattr(
+        "xarray_ecmwf.client_cdsapi.ecmwf.datastores.Client",
+        FakeDatastoreClient,
+    )
+    client = CdsapiRequestClient()
+
+    client.submit_and_wait_on_result({"dataset": "dummy", "variable": ["x"]})
+    assert captured["request"]["format"] == "grib"
+
+    client.submit_and_wait_on_result(
+        {"dataset": "dummy", "variable": ["x"], "format": "netcdf"}
+    )
+    assert captured["request"]["format"] == "netcdf"
 
 
 def test_ensure_dimensions_values_order_realigns_descending_pressure() -> None:
