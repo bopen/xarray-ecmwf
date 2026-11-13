@@ -1,6 +1,7 @@
 import contextlib
 import errno
 import functools
+import glob
 import hashlib
 import logging
 import os
@@ -63,6 +64,12 @@ def remove_file_or_folder(path: str) -> None:
             pass
 
 
+def remove_cfgrib_indexes(path: str) -> None:
+    # cfgrib names the index files of a GRIB file {path}.{short_hash}.idx
+    for index_path in glob.glob(glob.escape(path) + ".*.idx"):
+        remove_file_or_folder(index_path)
+
+
 def robust_save_to_file(
     saver: Callable[..., Any], args: Sequence[Any], path: str
 ) -> None:
@@ -89,24 +96,35 @@ class DatasetCacher:
     open_dataset: Callable[..., xr.Dataset] = xr.open_dataset
     cache_data_files: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
+    override_data_files: bool = False
 
-    def get_or_download_data_file(self, request: dict[str, Any]) -> str:
+    def __attrs_post_init__(self) -> None:
+        if self.override_data_files and not self.cache_data_files:
+            raise ValueError(
+                "override_data_files: true, needs cache_data_files: true. "
+                "With cache_data_files: false, data files are never reused"
+            )
+
+    def get_or_download_data_file(self, request: dict[str, Any]) -> tuple[str, str]:
+        # returns the name of the data file in the cache and the name to read
         LOGGER.info(f"retrieving {request}")
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
         path = os.path.join(self.cache_folder, filename)
-        if not self.cache_data_files:
-            # a name only this call knows, so no other reader can use or delete it
+        read_path = path
+        if self.override_data_files or not self.cache_data_files:
+            # a name only this call knows, so no other reader can use, replace or
+            #   delete it
             root, ext = os.path.splitext(path)
-            path = f"{root}-{str(uuid.uuid4())[:8]}{ext}"
+            read_path = f"{root}-{str(uuid.uuid4())[:8]}{ext}"
 
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
         with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
-            if not os.path.exists(path):
-                robust_save_to_file(self.request_client.download, (result,), path)
-        return path
+            if not os.path.exists(read_path):
+                robust_save_to_file(self.request_client.download, (result,), read_path)
+        return path, read_path
 
     @contextlib.contextmanager
     def open_data_file_and_clean(
@@ -116,23 +134,39 @@ class DatasetCacher:
         #   returns an empty file
         for try_ in range(tries):
             try:
-                path = self.get_or_download_data_file(request)
+                path, read_path = self.get_or_download_data_file(request)
                 break
             except RuntimeError:
                 LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
         else:
             raise RuntimeError(f"too many retries {tries}")
 
+        # another process with override_data_files can replace the cached data
+        #   file during the read. cfgrib opens it again by name for each field, at
+        #   the position the field had in the old file, so it could read a wrong
+        #   field with no error. So if the file isn't the same after the read, fail
+        before = os.stat(read_path)
         try:
-            ds = self.open_dataset(path)
+            ds = self.open_dataset(read_path)
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             yield ds
-        finally:
-            if not self.cache_data_files:
+            if not os.path.samestat(before, os.stat(read_path)):
+                raise RuntimeError(f"{read_path} was replaced during the read")
+            if self.override_data_files:
+                # the new data file was read fine: it goes into the cache
                 try:
-                    os.remove(path)
-                except Exception:
-                    LOGGER.exception("While removing a data file")
+                    os.replace(read_path, path)
+                except OSError:
+                    # the read worked: don't fail it because the cache can't be
+                    #   updated
+                    LOGGER.exception(f"failed to replace {path}")
+                else:
+                    # the indexes of the data file just replaced are stale
+                    remove_cfgrib_indexes(path)
+        finally:
+            if read_path != path:
+                # the private data file, unless it went into the cache
+                remove_file_or_folder(read_path)
 
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
@@ -192,11 +226,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
             filename_or_obj, request_chunks, **request_chunker_kwargs
         )
         open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
-        if (
-            not cache_kwargs.get("cache_data_files", True)
-            and open_dataset_kwargs["engine"] == "cfgrib"
+        if open_dataset_kwargs["engine"] == "cfgrib" and (
+            cache_kwargs.get("override_data_files", False)
+            or not cache_kwargs.get("cache_data_files", True)
         ):
-            # indexpath is a cfgrib option: other engines fail on it
+            # a private data file is read once: don't write a cfgrib index for it.
+            #   indexpath is a cfgrib option: other engines fail on it
             open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
         open_dataset = functools.partial(open_dataset, **open_dataset_kwargs)

@@ -55,6 +55,30 @@ Attributes:
 
 ```
 
+## Cache options
+
+xarray-ecmwf keeps two kinds of files in its cache folder:
+
+| | What they are | Kept between runs |
+|---|---|---|
+| **data files** | what comes from the data provider: GRIB, NetCDF or whatever the client writes | only with `cache_data_files: true`, the default |
+| **schema files** | metadata-only `.zarr` files, one per variable, that give the dataset its coordinates, attributes and dtype | always |
+
+```python
+>>> ds = xr.open_dataset(
+...     request,
+...     engine="ecmwf",
+...     cache_kwargs={
+...         "cache_folder": "./.xarray-ecmwf-cache",  # the default
+...         "cache_data_files": True,  # keep and reuse the data files
+...         "override_data_files": False,  # download the data files again
+...     },
+... )  # doctest: +SKIP
+
+```
+
+With `override_data_files: true`, every read downloads its data file again and puts it in the cache in place of the old one. Later runs without the override reuse the new files. It needs `cache_data_files: true`.
+
 ## `force_end_date`
 
 Pass `force_end_date` in `request_chunker_kwargs`. The keyword uses underscores.

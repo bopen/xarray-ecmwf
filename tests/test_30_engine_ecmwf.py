@@ -1,7 +1,9 @@
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
+import eccodes
 import numpy as np
 import pytest
 import xarray as xr
@@ -25,7 +27,7 @@ class DummyClient:
     def download(self, result: Any, target: str | None = None) -> str:
         assert target is not None
         self.downloads += 1
-        Path(target).touch()
+        Path(target).write_text(f"download {self.downloads}")
         return target
 
 
@@ -234,3 +236,159 @@ def test_open_data_file_and_clean_does_not_try_again_an_error_inside_the_with_bl
             raise RuntimeError("raised while loading the values")
 
     assert client.downloads == 1
+
+
+# with override_data_files each read downloads the data file again, reads its own
+# copy, and then puts it into the cache in place of the old one.
+
+
+def test_override_data_files_downloads_again_and_refreshes_the_cache(
+    tmp_path: Path,
+) -> None:
+    client = DummyClient({})
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    (tmp_path / "request.grib.5b7b6.idx").write_text("cfgrib index of the old file")
+    cacher = engine_ecmwf.DatasetCacher(
+        client, open_dummy, cache_folder=str(tmp_path), override_data_files=True
+    )
+
+    with cacher.open_data_file_and_clean(REQUEST) as ds:
+        assert ds.attrs["path"] != str(cached)
+
+    assert client.downloads == 1
+    assert cached.read_text() == "download 1"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+def test_override_data_files_readers_keep_their_own_files(tmp_path: Path) -> None:
+    client = DummyClient({})
+    cacher = engine_ecmwf.DatasetCacher(
+        client, open_dummy, cache_folder=str(tmp_path), override_data_files=True
+    )
+
+    # two readers of the same request at the same time
+    with cacher.open_data_file_and_clean(REQUEST) as outer:
+        with cacher.open_data_file_and_clean(REQUEST):
+            pass
+        assert os.path.exists(outer.attrs["path"])
+
+    assert client.downloads == 2
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+def test_override_data_files_keeps_the_cached_file_if_the_new_one_is_broken(
+    tmp_path: Path,
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}),
+        open_broken,
+        cache_folder=str(tmp_path),
+        override_data_files=True,
+    )
+
+    with pytest.raises(ValueError):
+        with cacher.open_data_file_and_clean(REQUEST):
+            pass
+
+    assert cached.read_text() == "cached by an earlier run"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+def test_override_data_files_keeps_the_read_if_the_cache_cannot_be_updated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}),
+        open_dummy,
+        cache_folder=str(tmp_path),
+        override_data_files=True,
+    )
+
+    def replace_denied(src: str, dst: str) -> None:
+        raise PermissionError(f"can't replace {dst}")
+
+    monkeypatch.setattr(os, "replace", replace_denied)
+
+    with cacher.open_data_file_and_clean(REQUEST):
+        pass
+
+    assert "failed to replace" in caplog.text
+    assert cached.read_text() == "cached by an earlier run"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+def test_cache_data_files_true_fails_a_read_of_a_file_replaced_meanwhile(
+    tmp_path: Path,
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}), open_dummy, cache_folder=str(tmp_path)
+    )
+
+    with pytest.raises(RuntimeError, match="replaced during the read"):
+        with cacher.open_data_file_and_clean(REQUEST):
+            # another run with override_data_files puts its new file in place
+            new = tmp_path / "request-1a2b3c4d.grib"
+            new.write_text("downloaded by the other run")
+            os.replace(new, cached)
+
+
+def test_override_data_files_needs_cache_data_files() -> None:
+    with pytest.raises(ValueError, match="needs cache_data_files"):
+        engine_ecmwf.DatasetCacher(
+            DummyClient({}), cache_data_files=False, override_data_files=True
+        )
+
+
+# a real GRIB file, written with eccodes and read by cfgrib, which writes an index
+# next to it: {path}.{short_hash}.idx
+GRIB_REQUEST = {
+    "dataset": "fake-dataset",
+    "variable": ["2m_temperature"],
+    "year": ["2000"],
+    "month": ["01", "02"],
+    "day": ["01"],
+    "time": ["00:00"],
+}
+
+
+class GribClient(DummyClient):
+    def download(self, result: Any, target: str | None = None) -> str:
+        assert target is not None
+        with open(target, "wb") as file:
+            for month in result["month"]:
+                gid = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+                eccodes.codes_set(gid, "dataDate", int(f"{result['year'][0]}{month}01"))
+                eccodes.codes_write(gid, file)
+                eccodes.codes_release(gid)
+        return target
+
+
+def test_override_data_files_removes_the_old_cfgrib_indexes(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    def read(**cache_kwargs: Any) -> None:
+        xr.open_dataset(
+            GRIB_REQUEST,  # type: ignore
+            engine="ecmwf",
+            request_client_class=GribClient,
+            request_chunks={"year": 1},
+            cache_kwargs={"cache_folder": str(tmp_path), **cache_kwargs},
+        ).load()
+
+    read()
+    assert len(list(tmp_path.glob("request.grib.*.idx"))) == 1
+
+    read(override_data_files=True)
+    assert list(tmp_path.glob("*.idx")) == []
+
+    # an old index next to the new file would make cfgrib warn and ignore it
+    with caplog.at_level(logging.WARNING, logger="cfgrib"):
+        read()
+    assert "older than GRIB file" not in caplog.text
