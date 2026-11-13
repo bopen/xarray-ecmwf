@@ -22,7 +22,11 @@ class CdsapiRequestClient:
         request = request.copy()
         dataset = request.pop("dataset")
         client = ecmwf.datastores.Client(**self.client_kwargs)
-        return client.submit_and_wait_on_results(dataset, request | {"format": "grib"})
+        # CDS daily-statistics datasets only serve NetCDF; keep legacy GRIB
+        # default only when the request does not already pick a format.
+        if "format" not in request and "data_format" not in request:
+            request = request | {"format": "grib"}
+        return client.submit_and_wait_on_results(dataset, request)
 
     def get_filename(self, result: Any) -> str:
         return result.location.split("/")[-1]  # type: ignore
