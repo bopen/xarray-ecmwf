@@ -112,8 +112,8 @@ def test_cache_data_files_false_readers_keep_their_own_files(tmp_path: Path) -> 
     )
 
     # two readers of the same request at the same time
-    with cacher.open_data_file(REQUEST) as outer:
-        with cacher.open_data_file(REQUEST):
+    with cacher.open_data_file_and_clean(REQUEST) as outer:
+        with cacher.open_data_file_and_clean(REQUEST):
             pass
         assert os.path.exists(outer.attrs["path"])
 
@@ -129,7 +129,7 @@ def test_cache_data_files_false_removes_a_file_that_cannot_be_opened(
     )
 
     with pytest.raises(ValueError):
-        with cacher.open_data_file(REQUEST):
+        with cacher.open_data_file_and_clean(REQUEST):
             pass
 
     assert os.listdir(tmp_path) == []
@@ -143,7 +143,7 @@ def test_cache_data_files_false_leaves_a_kept_file_alone(tmp_path: Path) -> None
         client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
     )
 
-    with cacher.open_data_file(REQUEST):
+    with cacher.open_data_file_and_clean(REQUEST):
         pass
 
     assert client.downloads == 1
@@ -164,20 +164,23 @@ def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(client, open_dummy, cache_folder=str(tmp_path))
 
-    with cacher.open_data_file(REQUEST):
+    with cacher.open_data_file_and_clean(REQUEST):
         pass
-    with cacher.open_data_file(REQUEST):
+    with cacher.open_data_file_and_clean(REQUEST):
         pass
 
     assert client.downloads == 1
     assert os.listdir(tmp_path) == ["request.grib"]
 
 
-# open_data_file tries again a failed download, like polytope's empty files, but
-# not an error raised inside its with block, e.g. while loading the values
+# open_data_file_and_clean tries again a failed download, like polytope's empty
+# files, but not an error raised inside its with block, e.g. while loading the
+# values
 
 
-def test_open_data_file_tries_again_a_failed_download(tmp_path: Path) -> None:
+def test_open_data_file_and_clean_tries_again_a_failed_download(
+    tmp_path: Path,
+) -> None:
     class EmptyFirstClient(DummyClient):
         def download(self, result: Any, target: str | None = None) -> str:
             path = super().download(result, target)
@@ -188,14 +191,14 @@ def test_open_data_file_tries_again_a_failed_download(tmp_path: Path) -> None:
     client = EmptyFirstClient({})
     cacher = engine_ecmwf.DatasetCacher(client, open_dummy, cache_folder=str(tmp_path))
 
-    with cacher.open_data_file(REQUEST):
+    with cacher.open_data_file_and_clean(REQUEST):
         pass
 
     assert client.downloads == 2
     assert os.listdir(tmp_path) == ["request.grib"]
 
 
-def test_open_data_file_does_not_try_again_an_error_inside_the_with_block(
+def test_open_data_file_and_clean_does_not_try_again_an_error_inside_the_with_block(
     tmp_path: Path,
 ) -> None:
     client = DummyClient({})
@@ -204,7 +207,7 @@ def test_open_data_file_does_not_try_again_an_error_inside_the_with_block(
     )
 
     with pytest.raises(RuntimeError, match="raised while loading the values"):
-        with cacher.open_data_file(REQUEST):
+        with cacher.open_data_file_and_clean(REQUEST):
             raise RuntimeError("raised while loading the values")
 
     assert client.downloads == 1

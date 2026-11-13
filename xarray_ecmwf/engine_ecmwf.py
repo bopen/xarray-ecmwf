@@ -109,7 +109,7 @@ class DatasetCacher:
         return path
 
     @contextlib.contextmanager
-    def open_data_file(
+    def open_data_file_and_clean(
         self, request: dict[str, Any], tries: int = 2
     ) -> Iterator[xr.Dataset]:
         # only the request and the download are tried again, e.g. when polytope
@@ -147,7 +147,7 @@ class DatasetCacher:
             os.makedirs(self.cache_folder, exist_ok=True)
 
         if not os.path.exists(path):
-            with self.open_data_file(request) as read_ds:
+            with self.open_data_file_and_clean(request) as read_ds:
                 # check again as the download may be long
                 with xr.backends.locks.get_write_lock(f"{HOSTNAME}-zarr"):
                     if not os.path.exists(path):
