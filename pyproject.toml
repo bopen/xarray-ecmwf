@@ -56,7 +56,6 @@ strict = true
 ignore_missing_imports = true
 module = [
   "cf2cdm",
-  "eccodes",
   "ecmwf",
   "ecmwf.opendata",
   "polytope",

@@ -1,9 +1,7 @@
-import logging
 import os
 from pathlib import Path
 from typing import Any
 
-import eccodes
 import numpy as np
 import pytest
 import xarray as xr
@@ -162,10 +160,18 @@ def test_open_dataset_names_the_new_key_for_cache_file() -> None:
         )
 
 
-# indexpath is a cfgrib option: other engines, e.g. h5netcdf, fail on it
-@pytest.mark.parametrize("engine, indexpath", [("cfgrib", ""), ("h5netcdf", None)])
+# a private data file is read once, so cfgrib writes no index for it. indexpath is
+# a cfgrib option: other engines, e.g. h5netcdf, fail on it
+@pytest.mark.parametrize(
+    "engine, cache_kwargs, indexpath",
+    [
+        ("cfgrib", {"cache_data_files": False}, ""),
+        ("h5netcdf", {"cache_data_files": False}, None),
+        ("cfgrib", {"override_data_files": True}, ""),
+    ],
+)
 def test_open_dataset_passes_indexpath_only_to_cfgrib(
-    tmp_path: Path, engine: str, indexpath: str | None
+    tmp_path: Path, engine: str, cache_kwargs: dict[str, Any], indexpath: str | None
 ) -> None:
     indexpaths = []
 
@@ -177,7 +183,7 @@ def test_open_dataset_passes_indexpath_only_to_cfgrib(
         REQUEST,  # type: ignore
         engine="ecmwf",
         request_client_class=DummyClient,
-        cache_kwargs={"cache_folder": str(tmp_path), "cache_data_files": False},
+        cache_kwargs={"cache_folder": str(tmp_path), **cache_kwargs},
         open_dataset_kwargs={"engine": engine},
         open_dataset=open_recording_indexpath,
     )
@@ -344,51 +350,3 @@ def test_override_data_files_needs_cache_data_files() -> None:
         engine_ecmwf.DatasetCacher(
             DummyClient({}), cache_data_files=False, override_data_files=True
         )
-
-
-# a real GRIB file, written with eccodes and read by cfgrib, which writes an index
-# next to it: {path}.{short_hash}.idx
-GRIB_REQUEST = {
-    "dataset": "fake-dataset",
-    "variable": ["2m_temperature"],
-    "year": ["2000"],
-    "month": ["01", "02"],
-    "day": ["01"],
-    "time": ["00:00"],
-}
-
-
-class GribClient(DummyClient):
-    def download(self, result: Any, target: str | None = None) -> str:
-        assert target is not None
-        with open(target, "wb") as file:
-            for month in result["month"]:
-                gid = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
-                eccodes.codes_set(gid, "dataDate", int(f"{result['year'][0]}{month}01"))
-                eccodes.codes_write(gid, file)
-                eccodes.codes_release(gid)
-        return target
-
-
-def test_override_data_files_removes_the_old_cfgrib_indexes(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    def read(**cache_kwargs: Any) -> None:
-        xr.open_dataset(
-            GRIB_REQUEST,  # type: ignore
-            engine="ecmwf",
-            request_client_class=GribClient,
-            request_chunks={"year": 1},
-            cache_kwargs={"cache_folder": str(tmp_path), **cache_kwargs},
-        ).load()
-
-    read()
-    assert len(list(tmp_path.glob("request.grib.*.idx"))) == 1
-
-    read(override_data_files=True)
-    assert list(tmp_path.glob("*.idx")) == []
-
-    # an old index next to the new file would make cfgrib warn and ignore it
-    with caplog.at_level(logging.WARNING, logger="cfgrib"):
-        read()
-    assert "older than GRIB file" not in caplog.text
