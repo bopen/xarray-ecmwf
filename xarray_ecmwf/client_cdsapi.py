@@ -251,6 +251,16 @@ class CdsapiRequestChunker:
         field_request = self.build_requests(chunks_requests)
         return field_request, selection, indices
 
+    def ensure_dimensions_values_order(self, da: xr.DataArray) -> xr.DataArray:
+        for dim, dim_index in self.chunked_coords.items():
+            if dim in da.dims:
+                desired_order = [v for v in dim_index.values if v in da[dim]]
+                # Same-size only: skip padded dims when the chunk lacks some request labels (e.g. time).
+                if len(desired_order) != da.sizes[dim] or len(desired_order) == 0:
+                    continue
+                da = da.reindex({dim: desired_order})
+        return da
+
     def get_chunk_values(
         self,
         key: tuple[int | slice, ...],
@@ -281,4 +291,5 @@ class CdsapiRequestChunker:
                     # pad before selecting, as the selection refers to the full chunk
                     da = da.pad({self.time_dim: (missing, 0)})
 
+            da = self.ensure_dimensions_values_order(da)
             return da.isel(selection).values
