@@ -174,7 +174,7 @@ def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None
 
 
 # open_data_file tries again a failed download, like polytope's empty files, but
-# not an error raised by the code that reads the dataset
+# not an error raised inside its with block, e.g. while loading the values
 
 
 def test_open_data_file_tries_again_a_failed_download(tmp_path: Path) -> None:
@@ -195,7 +195,7 @@ def test_open_data_file_tries_again_a_failed_download(tmp_path: Path) -> None:
     assert os.listdir(tmp_path) == ["request.grib"]
 
 
-def test_open_data_file_does_not_try_again_an_error_of_the_reading_code(
+def test_open_data_file_does_not_try_again_an_error_inside_the_with_block(
     tmp_path: Path,
 ) -> None:
     client = DummyClient({})
@@ -203,8 +203,8 @@ def test_open_data_file_does_not_try_again_an_error_of_the_reading_code(
         client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
     )
 
-    with pytest.raises(RuntimeError, match="raised by the reading code"):
+    with pytest.raises(RuntimeError, match="raised while loading the values"):
         with cacher.open_data_file(REQUEST):
-            raise RuntimeError("raised by the reading code")
+            raise RuntimeError("raised while loading the values")
 
     assert client.downloads == 1
