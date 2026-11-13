@@ -202,13 +202,6 @@ class CdsapiRequestChunker:
             request.update(**chunks[0][1])
         return request
 
-    def ensure_dims_order(self, da: xr.DataArray) -> xr.DataArray:
-        dims = []
-        for dim in self.dims:
-            if dim in da.dims:
-                dims.append(dim)
-        return da.transpose(*dims)
-
     def get_chunk_requests(
         self,
         key: tuple[int | slice, ...],
@@ -251,6 +244,37 @@ class CdsapiRequestChunker:
         field_request = self.build_requests(chunks_requests)
         return field_request, selection, indices
 
+    def ensure_dims_order(self, da: xr.DataArray) -> xr.DataArray:
+        dims: list[str] = []
+        for dim in self.dims:
+            if dim in da.dims:
+                dims.append(dim)
+        return da.transpose(*dims)
+
+    def add_missing_dims_from_schema(self, da: xr.DataArray) -> xr.DataArray:
+        axis: list[int] = []
+        dims: list[str] = []
+        for ax, dim in enumerate(self.dims):
+            if dim not in da.dims:
+                axis.append(ax)
+                dims.append(dim)
+        return da.expand_dims(dims, axis=axis)
+
+    def pad_short_first_time_chunk(
+        self, da: xr.DataArray, indices: dict[str, int]
+    ) -> xr.DataArray:
+        # horrible workaround for the crazy CDS / MARS convention to return
+        # a short request at the start of a dataset (at least on ERA5 and ERA5 Land)
+        if self.time_dim in indices and indices[self.time_dim] == 0:
+            time_chunk = self.chunks[self.time_dim]
+            if not isinstance(time_chunk, int):
+                time_chunk = time_chunk[0]
+            missing = time_chunk - da.sizes[self.time_dim]
+            if missing > 0:
+                # pad before selecting, as the selection refers to the full chunk
+                da = da.pad({self.time_dim: (missing, 0)})
+        return da
+
     def ensure_dimensions_values_order(self, da: xr.DataArray) -> xr.DataArray:
         for dim, dim_index in self.chunked_coords.items():
             if dim in da.dims:
@@ -270,26 +294,7 @@ class CdsapiRequestChunker:
         with dataset_cacher.retrieve(field_request) as ds:
             da = list(ds.data_vars.values())[0]
             da = self.ensure_dims_order(da)
-
-            axis = []
-            dims = []
-            for ax, dim in enumerate(self.dims):
-                if dim not in da.dims:
-                    axis.append(ax)
-                    dims.append(dim)
-
-            da = da.expand_dims(dims, axis=axis)
-
-            # horrible workaround for the crazy CDS / MARS convention to return
-            # a short request at the start of a dataset (at least on ERA5 and ERA5 Land)
-            if self.time_dim in indices and indices[self.time_dim] == 0:
-                time_chunk = self.chunks[self.time_dim]
-                if not isinstance(time_chunk, int):
-                    time_chunk = time_chunk[0]
-                missing = time_chunk - da.sizes[self.time_dim]
-                if missing > 0:
-                    # pad before selecting, as the selection refers to the full chunk
-                    da = da.pad({self.time_dim: (missing, 0)})
-
+            da = self.add_missing_dims_from_schema(da)
+            da = self.pad_short_first_time_chunk(da, indices)
             da = self.ensure_dimensions_values_order(da)
             return da.isel(selection).values
