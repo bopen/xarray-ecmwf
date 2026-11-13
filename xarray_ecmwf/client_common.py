@@ -22,7 +22,7 @@ class RequestClientProtocol(Protocol):
 class DatasetCacherProtocol(Protocol):
     def retrieve(self, request: dict[str, Any]) -> ContextManager[xr.Dataset]: ...
 
-    def cached_empty_dataset(
+    def cached_schema_dataset(
         self, request: dict[str, Any]
     ) -> ContextManager[xr.Dataset]: ...
 

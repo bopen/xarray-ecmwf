@@ -55,6 +55,30 @@ Attributes:
 
 ```
 
+## Cache options
+
+xarray-ecmwf keeps two kinds of files in its cache folder:
+
+| | What they are | Kept between runs |
+|---|---|---|
+| **data files** | what comes from the data provider: GRIB, NetCDF or whatever the client writes | only with `cache_data_files: true`, the default |
+| **schema files** | metadata-only `.zarr` files, one per variable, that give the dataset its coordinates, attributes and dtype | always |
+
+```python
+>>> ds = xr.open_dataset(
+...     request,
+...     engine="ecmwf",
+...     cache_kwargs={
+...         "cache_folder": "./.xarray-ecmwf-cache",  # the default
+...         "cache_data_files": True,  # keep and reuse the data files
+...         "override_schema_files": False,  # build the schema files again
+...     },
+... )  # doctest: +SKIP
+
+```
+
+With `override_schema_files: true`, every `open_dataset` builds again the schema files it uses and replaces the cached ones, e.g. to repair a broken schema file. When every dask task opens the dataset, as in a distributed ingestion, it rebuilds the schema file of every variable in every dask task: use it where the dataset is opened once, e.g. before the ingestion.
+
 ## `force_end_date`
 
 Pass `force_end_date` in `request_chunker_kwargs`. The keyword uses underscores.
