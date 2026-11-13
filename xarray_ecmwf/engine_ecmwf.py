@@ -90,20 +90,7 @@ class DatasetCacher:
     cache_data_files: bool = True
     cache_folder: str = "./.xarray-ecmwf-cache"
 
-    @contextlib.contextmanager
-    def retrieve(self, request: dict[str, Any], tries: int = 2) -> Iterator[xr.Dataset]:
-        for try_ in range(tries):
-            try:
-                with self.retrieve_once(request) as ds:
-                    yield ds
-                break
-            except RuntimeError:
-                LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
-        else:
-            raise RuntimeError(f"too many retries {tries}")
-
-    @contextlib.contextmanager
-    def retrieve_once(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
+    def get_data_file(self, request: dict[str, Any]) -> str:
         LOGGER.info(f"retrieving {request}")
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
@@ -119,6 +106,21 @@ class DatasetCacher:
         with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
             if not os.path.exists(path):
                 robust_save_to_file(self.request_client.download, (result,), path)
+        return path
+
+    @contextlib.contextmanager
+    def retrieve(self, request: dict[str, Any], tries: int = 2) -> Iterator[xr.Dataset]:
+        # only the request and the download are tried again, e.g. when polytope
+        #   returns an empty file
+        for try_ in range(tries):
+            try:
+                path = self.get_data_file(request)
+                break
+            except RuntimeError:
+                LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
+        else:
+            raise RuntimeError(f"too many retries {tries}")
+
         try:
             ds = self.open_dataset(path)
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
