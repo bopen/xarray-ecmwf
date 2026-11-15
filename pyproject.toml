@@ -28,6 +28,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Scientific/Engineering"
 ]
 dependencies = ["attrs>=23.1", "cfgrib>=0.9.10.4", "dask>=2026.8.0", "ecmwf-datastores-client>=0.1", "ecmwf-opendata>=0.2", "numpy>=2.0", "pandas>=2.2.2", "polytope-client>=0.7.1", "xarray>=2025.6", "zarr>=3.1.6"]
