@@ -1,6 +1,7 @@
 import contextlib
 import errno
 import functools
+import glob
 import hashlib
 import logging
 import os
@@ -63,6 +64,18 @@ def remove_file_or_folder(path: str) -> None:
             pass
 
 
+def remove_cfgrib_indexes(path: str) -> None:
+    # cfgrib names the index files of a GRIB file {path}.{short_hash}.idx
+    for index_path in glob.glob(glob.escape(path) + ".*.idx"):
+        remove_file_or_folder(index_path)
+
+
+def private_copy_path(path: str) -> str:
+    # a name only one read knows, so no other reader can use, replace or delete it
+    root, ext = os.path.splitext(path)
+    return f"{root}-{str(uuid.uuid4())[:8]}{ext}"
+
+
 def robust_save_to_file(
     saver: Callable[..., Any], args: Sequence[Any], path: str
 ) -> None:
@@ -75,48 +88,69 @@ def robust_save_to_file(
         raise ex
 
     try:
-        os.rename(tmp_path, path)
+        if os.path.isdir(tmp_path):
+            # a folder, like a .zarr schema file, can't be hard-linked: renaming it
+            #   fails if path is already there
+            os.rename(tmp_path, path)
+        else:
+            # a file is linked, not renamed: renaming would replace the file already
+            #   there, linking fails
+            os.link(tmp_path, path)
     except OSError as ex:
-        remove_file_or_folder(tmp_path)
-        # another process saved it first and it can't be replaced: keep that one
+        # another process saved it first: keep that one, so that its readers
+        #   don't see it replaced
         if ex.errno not in (errno.EEXIST, errno.ENOTEMPTY):
             raise ex
+    finally:
+        # the temporary name: a file linked to path stays there
+        remove_file_or_folder(tmp_path)
 
 
 @attrs.define(slots=False)
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
     open_dataset: Callable[..., xr.Dataset] = xr.open_dataset
-    cache_data_files: bool = True
+    # "keep" the data files in the cache and reuse them, "delete" a private copy
+    #   after each read, or "refresh" the cached ones
+    data_files: str = attrs.field(
+        default="keep", validator=attrs.validators.in_(["keep", "delete", "refresh"])
+    )
     cache_folder: str = "./.xarray-ecmwf-cache"
 
-    def get_or_download_data_file(self, request: dict[str, Any]) -> str:
+    def request_data_file(self, request: dict[str, Any]) -> tuple[Any, str]:
+        # asks the provider: returns the result to download, and where the data
+        #   file is kept in the cache folder, shared by every reader of the request
         LOGGER.info(f"retrieving {request}")
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
-        path = os.path.join(self.cache_folder, filename)
-        if not self.cache_data_files:
-            # a name only this call knows, so no other reader can use or delete it
-            root, ext = os.path.splitext(path)
-            path = f"{root}-{str(uuid.uuid4())[:8]}{ext}"
+        return result, os.path.join(self.cache_folder, filename)
 
+    def maybe_download_data_file(self, result: Any, path: str) -> None:
+        # downloads the data file to path, unless it's already there. A private copy
+        #   path is new, so it's always downloaded
         if not os.path.isdir(self.cache_folder):
             os.makedirs(self.cache_folder, exist_ok=True)
 
         with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
             if not os.path.exists(path):
                 robust_save_to_file(self.request_client.download, (result,), path)
-        return path
 
     @contextlib.contextmanager
     def open_data_file_and_clean(
         self, request: dict[str, Any], tries: int = 2
     ) -> Iterator[xr.Dataset]:
+        # opens the cached data file, or with "delete" and "refresh" a private copy,
+        #   then deleted or moved into the cache
+        private_copy = self.data_files != "keep"
         # only the request and the download are tried again, e.g. when polytope
         #   returns an empty file
         for try_ in range(tries):
             try:
-                path = self.get_or_download_data_file(request)
+                result, cache_path = self.request_data_file(request)
+                read_path = cache_path
+                if private_copy:
+                    read_path = private_copy_path(cache_path)
+                self.maybe_download_data_file(result, read_path)
                 break
             except RuntimeError:
                 LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
@@ -124,15 +158,31 @@ class DatasetCacher:
             raise RuntimeError(f"too many retries {tries}")
 
         try:
-            ds = self.open_dataset(path)
+            # cfgrib reopens the file by name for each field: if a refresh replaced
+            #   it meanwhile, a wrong field could be read with no error: fail instead
+            before = os.stat(read_path)
+            ds = self.open_dataset(read_path)
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             yield ds
-        finally:
-            if not self.cache_data_files:
+            if not os.path.samestat(before, os.stat(read_path)):
+                raise RuntimeError(f"{read_path} was replaced during the read")
+            if self.data_files == "refresh":
+                # the new data file was read fine: it goes into the cache, and the
+                #   indexes of the old one are stale
                 try:
-                    os.remove(path)
-                except Exception:
-                    LOGGER.exception("While removing a data file")
+                    # cfgrib ignores an index older than its data file: with the time
+                    #   of now, all indexes of the old file are older, even recent ones
+                    os.utime(read_path)
+                    os.replace(read_path, cache_path)
+                    remove_cfgrib_indexes(cache_path)
+                except OSError:
+                    # the read worked: don't fail it because the cache can't be
+                    #   updated
+                    LOGGER.exception(f"failed to replace {cache_path}")
+        finally:
+            if private_copy:
+                # already gone if it was moved into the cache
+                remove_file_or_folder(read_path)
 
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
@@ -180,10 +230,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
-        if "cache_file" in cache_kwargs:
-            raise TypeError(
-                "cache_kwargs 'cache_file' was renamed to 'cache_data_files'"
-            )
+        for old_key in ["cache_file", "cache_data_files"]:
+            if old_key in cache_kwargs:
+                raise TypeError(
+                    f"cache_kwargs {old_key!r} was replaced by 'data_files': "
+                    "true is 'keep', false is 'delete'"
+                )
         request_client_class = request_client_class or SUPPORTED_CLIENTS[client]
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
@@ -193,10 +245,11 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         )
         open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
         if (
-            not cache_kwargs.get("cache_data_files", True)
-            and open_dataset_kwargs["engine"] == "cfgrib"
+            open_dataset_kwargs["engine"] == "cfgrib"
+            and cache_kwargs.get("data_files", "keep") != "keep"
         ):
-            # indexpath is a cfgrib option: other engines fail on it
+            # a private data file is read once: don't write a cfgrib index for it.
+            #   indexpath is a cfgrib option: other engines fail on it
             open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
         open_dataset = functools.partial(open_dataset, **open_dataset_kwargs)

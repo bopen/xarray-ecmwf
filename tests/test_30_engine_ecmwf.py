@@ -1,4 +1,6 @@
 import os
+import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +27,7 @@ class DummyClient:
     def download(self, result: Any, target: str | None = None) -> str:
         assert target is not None
         self.downloads += 1
-        Path(target).touch()
+        Path(target).write_text(f"download {self.downloads}")
         return target
 
 
@@ -88,27 +90,40 @@ def test_robust_save_to_file_removes_a_folder_it_failed_to_write(
     assert os.listdir(tmp_path) == []
 
 
-def test_robust_save_to_file_raises_when_a_file_can_not_be_renamed(
-    tmp_path: Path,
+def test_robust_save_to_file_raises_when_a_file_can_not_be_saved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    os.makedirs(tmp_path / "a.grib" / "not-a-grib")
+    # e.g. a filesystem without hard links
+    def denied(src: str, dst: str) -> None:
+        raise PermissionError(f"can't save {dst}")
 
-    with pytest.raises(OSError):
+    monkeypatch.setattr(os, "link", denied)
+
+    with pytest.raises(PermissionError):
         engine_ecmwf.robust_save_to_file(
             lambda target: Path(target).touch(), (), str(tmp_path / "a.grib")
         )
 
-    assert os.listdir(tmp_path) == ["a.grib"]
+    assert os.listdir(tmp_path) == []
 
 
-# with cache_data_files=False each read downloads a file of its own and deletes only
-# that one, so readers of the same request don't delete each other's files.
+# with data_files="delete" or "refresh" each read downloads its own copy and deletes
+# only that one, so readers don't delete each other's files
 
 
-def test_cache_data_files_false_readers_keep_their_own_files(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "cache_kwargs, files_left",
+    [
+        ({"data_files": "delete"}, []),
+        ({"data_files": "refresh"}, ["request.grib"]),
+    ],
+)
+def test_readers_keep_their_own_files(
+    tmp_path: Path, cache_kwargs: dict[str, Any], files_left: list[str]
+) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(
-        client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
+        client, open_dummy, cache_folder=str(tmp_path), **cache_kwargs
     )
 
     # two readers of the same request at the same time
@@ -118,14 +133,14 @@ def test_cache_data_files_false_readers_keep_their_own_files(tmp_path: Path) -> 
         assert os.path.exists(outer.attrs["path"])
 
     assert client.downloads == 2
-    assert os.listdir(tmp_path) == []
+    assert os.listdir(tmp_path) == files_left
 
 
-def test_cache_data_files_false_removes_a_file_that_cannot_be_opened(
+def test_data_files_delete_removes_a_file_that_cannot_be_opened(
     tmp_path: Path,
 ) -> None:
     cacher = engine_ecmwf.DatasetCacher(
-        DummyClient({}), open_broken, cache_data_files=False, cache_folder=str(tmp_path)
+        DummyClient({}), open_broken, data_files="delete", cache_folder=str(tmp_path)
     )
 
     with pytest.raises(ValueError):
@@ -135,35 +150,69 @@ def test_cache_data_files_false_removes_a_file_that_cannot_be_opened(
     assert os.listdir(tmp_path) == []
 
 
-def test_cache_data_files_false_leaves_a_kept_file_alone(tmp_path: Path) -> None:
+def test_data_files_delete_removes_a_file_that_cannot_be_checked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stat = os.stat
+
+    # e.g. a stale NFS file handle, right after the download
+    def stat_failing_on_private_copies(path: Any, *args: Any, **kwargs: Any) -> Any:
+        if isinstance(path, str) and re.fullmatch(
+            r"request-\w{8}\.grib", os.path.basename(path)
+        ):
+            raise OSError("stale file handle")
+        return stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "stat", stat_failing_on_private_copies)
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}), open_dummy, data_files="delete", cache_folder=str(tmp_path)
+    )
+
+    with pytest.raises(OSError, match="stale file handle"):
+        with cacher.open_data_file_and_clean(REQUEST):
+            pass
+
+    assert os.listdir(tmp_path) == []
+
+
+def test_data_files_delete_leaves_a_kept_file_alone(tmp_path: Path) -> None:
     client = DummyClient({})
     kept = tmp_path / "request.grib"
-    kept.write_text("kept by a run with cache_data_files=True")
+    kept.write_text("kept by a run with data_files=keep")
     cacher = engine_ecmwf.DatasetCacher(
-        client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
+        client, open_dummy, data_files="delete", cache_folder=str(tmp_path)
     )
 
     with cacher.open_data_file_and_clean(REQUEST):
         pass
 
     assert client.downloads == 1
-    assert kept.read_text() == "kept by a run with cache_data_files=True"
+    assert kept.read_text() == "kept by a run with data_files=keep"
 
 
-def test_open_dataset_names_the_new_key_for_cache_file() -> None:
-    with pytest.raises(TypeError, match="renamed to 'cache_data_files'"):
+@pytest.mark.parametrize("old_key", ["cache_file", "cache_data_files"])
+def test_open_dataset_names_the_new_key_for_old_ones(old_key: str) -> None:
+    with pytest.raises(TypeError, match="replaced by 'data_files'"):
         xr.open_dataset(
             REQUEST,  # type: ignore
             engine="ecmwf",
             request_client_class=DummyClient,
-            cache_kwargs={"cache_file": False},
+            cache_kwargs={old_key: False},
         )
 
 
-# indexpath is a cfgrib option: other engines, e.g. h5netcdf, fail on it
-@pytest.mark.parametrize("engine, indexpath", [("cfgrib", ""), ("h5netcdf", None)])
+# a private data file is read once, so cfgrib writes no index for it. indexpath is
+# a cfgrib option: other engines, e.g. h5netcdf, fail on it
+@pytest.mark.parametrize(
+    "engine, cache_kwargs, indexpath",
+    [
+        ("cfgrib", {"data_files": "delete"}, ""),
+        ("h5netcdf", {"data_files": "delete"}, None),
+        ("cfgrib", {"data_files": "refresh"}, ""),
+    ],
+)
 def test_open_dataset_passes_indexpath_only_to_cfgrib(
-    tmp_path: Path, engine: str, indexpath: str | None
+    tmp_path: Path, engine: str, cache_kwargs: dict[str, Any], indexpath: str | None
 ) -> None:
     indexpaths = []
 
@@ -175,7 +224,7 @@ def test_open_dataset_passes_indexpath_only_to_cfgrib(
         REQUEST,  # type: ignore
         engine="ecmwf",
         request_client_class=DummyClient,
-        cache_kwargs={"cache_folder": str(tmp_path), "cache_data_files": False},
+        cache_kwargs={"cache_folder": str(tmp_path), **cache_kwargs},
         open_dataset_kwargs={"engine": engine},
         open_dataset=open_recording_indexpath,
     )
@@ -183,7 +232,7 @@ def test_open_dataset_passes_indexpath_only_to_cfgrib(
     assert indexpaths == [indexpath]
 
 
-def test_cache_data_files_true_reuses_and_keeps_the_file(tmp_path: Path) -> None:
+def test_data_files_keep_reuses_and_keeps_the_file(tmp_path: Path) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(client, open_dummy, cache_folder=str(tmp_path))
 
@@ -226,7 +275,7 @@ def test_open_data_file_and_clean_does_not_try_again_an_error_inside_the_with_bl
 ) -> None:
     client = DummyClient({})
     cacher = engine_ecmwf.DatasetCacher(
-        client, open_dummy, cache_data_files=False, cache_folder=str(tmp_path)
+        client, open_dummy, data_files="delete", cache_folder=str(tmp_path)
     )
 
     with pytest.raises(RuntimeError, match="raised while loading the values"):
@@ -234,3 +283,141 @@ def test_open_data_file_and_clean_does_not_try_again_an_error_inside_the_with_bl
             raise RuntimeError("raised while loading the values")
 
     assert client.downloads == 1
+
+
+# with data_files="refresh" each read downloads the data file again, reads its own
+# copy, and then puts it into the cache in place of the old one.
+
+
+def test_data_files_refresh_downloads_again_and_refreshes_the_cache(
+    tmp_path: Path,
+) -> None:
+    client = DummyClient({})
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    (tmp_path / "request.grib.5b7b6.idx").write_text("cfgrib index of the old file")
+    cacher = engine_ecmwf.DatasetCacher(
+        client, open_dummy, cache_folder=str(tmp_path), data_files="refresh"
+    )
+
+    with cacher.open_data_file_and_clean(REQUEST) as ds:
+        assert ds.attrs["path"] != str(cached)
+
+    assert client.downloads == 1
+    assert cached.read_text() == "download 1"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+# cfgrib uses an index not older than its data file: the new file must be newer than
+# an index of the old file written during the refresh's read, or it could be used
+
+
+def test_data_files_refresh_makes_the_new_file_newer_than_the_old_indexes(
+    tmp_path: Path,
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}),
+        open_dummy,
+        cache_folder=str(tmp_path),
+        data_files="refresh",
+    )
+
+    with cacher.open_data_file_and_clean(REQUEST) as ds:
+        # the new file was downloaded an hour ago, and a reader with "keep" wrote
+        #   an index of the old file a minute ago
+        an_hour_ago = time.time() - 3600
+        os.utime(ds.attrs["path"], (an_hour_ago, an_hour_ago))
+        index_written = time.time() - 60
+
+    assert cached.stat().st_mtime > index_written
+
+
+def test_data_files_refresh_keeps_the_cached_file_if_the_new_one_is_broken(
+    tmp_path: Path,
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}),
+        open_broken,
+        cache_folder=str(tmp_path),
+        data_files="refresh",
+    )
+
+    with pytest.raises(ValueError):
+        with cacher.open_data_file_and_clean(REQUEST):
+            pass
+
+    assert cached.read_text() == "cached by an earlier run"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+def test_data_files_refresh_keeps_the_read_if_the_cache_cannot_be_updated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}),
+        open_dummy,
+        cache_folder=str(tmp_path),
+        data_files="refresh",
+    )
+
+    def replace_denied(src: str, dst: str) -> None:
+        raise PermissionError(f"can't replace {dst}")
+
+    monkeypatch.setattr(os, "replace", replace_denied)
+
+    with cacher.open_data_file_and_clean(REQUEST):
+        pass
+
+    assert "failed to replace" in caplog.text
+    assert cached.read_text() == "cached by an earlier run"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+# the download lock is per host, so two worker pods can download the same data file:
+# the second copy saved must not replace the first, or the first one's reads fail
+
+
+def test_data_files_keep_uses_the_copy_saved_first(tmp_path: Path) -> None:
+    cached = tmp_path / "request.grib"
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}), open_dummy, cache_folder=str(tmp_path)
+    )
+
+    with cacher.open_data_file_and_clean(REQUEST):
+        # another worker pod saves its own download of the same data file
+        engine_ecmwf.robust_save_to_file(
+            lambda target: Path(target).write_text("another pod's download"),
+            (),
+            str(cached),
+        )
+
+    assert cached.read_text() == "download 1"
+    assert os.listdir(tmp_path) == ["request.grib"]
+
+
+def test_data_files_keep_fails_a_read_of_a_file_replaced_meanwhile(
+    tmp_path: Path,
+) -> None:
+    cached = tmp_path / "request.grib"
+    cached.write_text("cached by an earlier run")
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}), open_dummy, cache_folder=str(tmp_path)
+    )
+
+    with pytest.raises(RuntimeError, match="replaced during the read"):
+        with cacher.open_data_file_and_clean(REQUEST):
+            # another run with data_files="refresh" puts its new file in place
+            new = tmp_path / "request-1a2b3c4d.grib"
+            new.write_text("downloaded by the other run")
+            os.replace(new, cached)
+
+
+def test_data_files_rejects_an_unknown_value() -> None:
+    with pytest.raises(ValueError, match="'data_files' must be in"):
+        engine_ecmwf.DatasetCacher(DummyClient({}), data_files="refesh")
