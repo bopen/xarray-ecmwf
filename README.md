@@ -55,6 +55,35 @@ Attributes:
 
 ```
 
+## Cache options
+
+xarray-ecmwf keeps two kinds of files in its cache folder:
+
+| | What they are | Kept between runs |
+|---|---|---|
+| **data files** | what comes from the data provider: GRIB, NetCDF or whatever the client writes | with `data_files: keep`, the default |
+| **schema files** | metadata-only `.zarr` files, one per variable, that give the dataset its coordinates, attributes and dtype | always |
+
+```python
+>>> ds = xr.open_dataset(
+...     request,
+...     engine="ecmwf",
+...     cache_kwargs={
+...         "cache_folder": "./.xarray-ecmwf-cache",  # the default
+...         "data_files": "keep",  # the default, or "delete" or "refresh"
+...     },
+... )  # doctest: +SKIP
+
+```
+
+`data_files` says what to do with the data files:
+
+- `keep`: keep them in the cache folder and reuse them;
+- `delete`: every read downloads its own copy and deletes it after the read;
+- `refresh`: every read downloads its data file again and puts it in the cache folder in place of the old one. Later runs with `keep` reuse the new files.
+
+A data file is never changed once saved: `abc.grib` is a link to the current file, e.g. `abc-1a2b3c4d.grib`, and `refresh` points it to a new one. To delete a data file by hand, delete the link or the file: the next read downloads it again.
+
 ## `force_end_date`
 
 Pass `force_end_date` in `request_chunker_kwargs`. The keyword uses underscores.
