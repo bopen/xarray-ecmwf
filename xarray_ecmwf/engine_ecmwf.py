@@ -82,12 +82,25 @@ def link_data_file(data_file: str, link: str) -> None:
         remove_file_or_folder(tmp_link)
 
 
+def link_or_discard(data_file: str, link: str) -> None:
+    # makes link point to data_file, unless another process linked its copy first:
+    #   then deletes data_file. A link to a file deleted by hand is replaced
+    try:
+        os.symlink(os.path.basename(data_file), link)
+    except FileExistsError:
+        if os.path.exists(link):
+            remove_file_or_folder(data_file)
+        else:
+            link_data_file(data_file, link)
+
+
 def replace_data_file(data_file: str, link: str) -> None:
-    # points link to data_file, then deletes the file it pointed to and that file's
-    #   cfgrib indexes, named {path}.{short_hash}.idx
-    old_path = os.path.realpath(link) if os.path.islink(link) else None
+    # points link to data_file, then deletes the file it pointed to with its cfgrib
+    #   indexes, only if that's a file in the same folder, as this code links them
+    old_name = os.readlink(link) if os.path.islink(link) else ""
+    old_path = os.path.join(os.path.dirname(link), old_name)
     link_data_file(data_file, link)
-    if old_path:
+    if old_name == os.path.basename(old_name) and os.path.isfile(old_path):
         for path in [old_path, *glob.glob(glob.escape(old_path) + ".*.idx")]:
             remove_file_or_folder(path)
 
@@ -119,7 +132,7 @@ class DatasetCacher:
     # "keep" the data files in the cache and reuse them, "delete" a private copy
     #   after each read, or "refresh" the cached ones
     data_files: str = attrs.field(
-        default="keep", validator=attrs.validators.in_(["keep", "delete", "refresh"])
+        default="delete", validator=attrs.validators.in_(["keep", "delete", "refresh"])
     )
     cache_folder: str = "./.xarray-ecmwf-cache"
 
@@ -144,13 +157,11 @@ class DatasetCacher:
             if self.data_files != "keep":
                 return download_path
             try:
-                # unlike a rename, fails if another process linked its copy first
-                os.symlink(os.path.basename(download_path), cache_path)
-            except FileExistsError:
-                if os.path.exists(cache_path):  # use the copy linked first
-                    remove_file_or_folder(download_path)
-                else:  # a link to a file deleted by hand
-                    link_data_file(download_path, cache_path)
+                link_or_discard(download_path, cache_path)
+            except OSError:
+                # don't leave behind a whole data file that nothing links to
+                remove_file_or_folder(download_path)
+                raise
         return os.path.realpath(cache_path)
 
     @contextlib.contextmanager
@@ -249,7 +260,7 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
         if (
             open_dataset_kwargs["engine"] == "cfgrib"
-            and cache_kwargs.get("data_files", "keep") != "keep"
+            and cache_kwargs.get("data_files", "delete") != "keep"
         ):
             # no cfgrib index for a new delete or refresh copy: keep reads write one.
             #   indexpath is a cfgrib option: other engines fail on it

@@ -170,13 +170,19 @@ def test_open_dataset_names_the_new_key_for_old_ones(old_key: str) -> None:
         )
 
 
-# indexpath is a cfgrib option: other engines, e.g. h5netcdf, fail on it
+# indexpath is a cfgrib option: other engines, e.g. h5netcdf, fail on it.
+#   data_files None: not set, so the default, delete
 @pytest.mark.parametrize(
     "engine, data_files, indexpath",
-    [("cfgrib", "delete", ""), ("h5netcdf", "delete", None), ("cfgrib", "refresh", "")],
+    [
+        ("cfgrib", "delete", ""),
+        ("h5netcdf", "delete", None),
+        ("cfgrib", "refresh", ""),
+        ("cfgrib", None, ""),
+    ],
 )
 def test_open_dataset_passes_indexpath_only_to_cfgrib(
-    tmp_path: Path, engine: str, data_files: str, indexpath: str | None
+    tmp_path: Path, engine: str, data_files: str | None, indexpath: str | None
 ) -> None:
     indexpaths = []
 
@@ -184,16 +190,30 @@ def test_open_dataset_passes_indexpath_only_to_cfgrib(
         indexpaths.append(kwargs.get("indexpath"))
         return open_dummy(path)
 
+    cache_kwargs = {"cache_folder": str(tmp_path)}
+    if data_files:
+        cache_kwargs["data_files"] = data_files
     xr.open_dataset(
         REQUEST,  # type: ignore
         engine="ecmwf",
         request_client_class=DummyClient,
-        cache_kwargs={"cache_folder": str(tmp_path), "data_files": data_files},
+        cache_kwargs=cache_kwargs,
         open_dataset_kwargs={"engine": engine},
         open_dataset=open_recording_indexpath,
     )
 
     assert indexpaths == [indexpath]
+
+
+def test_data_files_delete_is_the_default(tmp_path: Path) -> None:
+    cacher = engine_ecmwf.DatasetCacher(
+        DummyClient({}), open_dummy, cache_folder=str(tmp_path)
+    )
+
+    with cacher.open_data_file_and_clean(REQUEST):
+        pass
+
+    assert os.listdir(tmp_path) == []
 
 
 def test_data_files_keep_reuses_and_keeps_the_file(tmp_path: Path) -> None:
@@ -226,6 +246,20 @@ def test_data_files_keep_uses_the_copy_linked_first(tmp_path: Path) -> None:
 
     assert read_path.endswith("request-otherpod.grib")
     assert sorted(os.listdir(tmp_path)) == ["request-otherpod.grib", "request.grib"]
+
+
+def test_data_files_keep_deletes_its_download_if_it_cannot_link_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_links(src: str, dst: str) -> None:
+        raise PermissionError("symbolic links aren't supported")
+
+    monkeypatch.setattr(os, "symlink", no_links)
+
+    with pytest.raises(PermissionError):
+        read_once(tmp_path)
+
+    assert os.listdir(tmp_path) == []
 
 
 def test_data_files_keep_downloads_again_a_file_deleted_by_hand(
@@ -295,6 +329,23 @@ def test_data_files_refresh_downloads_again_and_refreshes_the_cache(
     # the link points to the new file; the old file and its index are deleted
     assert os.readlink(tmp_path / "request.grib") == new
     assert sorted(os.listdir(tmp_path)) == sorted([new, "request.grib"])
+
+
+# a link made by hand to a file outside the cache folder: refresh moves the link,
+# but must not delete that file
+def test_data_files_refresh_deletes_only_files_in_the_cache_folder(
+    tmp_path: Path,
+) -> None:
+    archived = tmp_path / "archive.grib"
+    archived.write_text("an archived file")
+    cache_folder = tmp_path / "cache"
+    cache_folder.mkdir()
+    os.symlink(str(archived), cache_folder / "request.grib")
+
+    new = os.path.basename(read_once(cache_folder, "refresh"))
+
+    assert os.readlink(cache_folder / "request.grib") == new
+    assert archived.read_text() == "an archived file"
 
 
 def test_data_files_refresh_keeps_the_read_if_the_cache_cannot_be_updated(
