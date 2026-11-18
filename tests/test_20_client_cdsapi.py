@@ -102,7 +102,8 @@ def open_dummy_dataset(
         request_chunks=request_chunks,
         request_client_class=MissingFirstStepClient,
         open_dataset=open_dataset,
-        cache_kwargs={"cache_folder": str(cache_folder)},
+        # keep the data files: a test reads the requests they hold
+        cache_kwargs={"cache_folder": str(cache_folder), "data_files": "keep"},
         chunks={},
     )
 

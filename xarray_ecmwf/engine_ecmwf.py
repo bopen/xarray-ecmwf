@@ -1,6 +1,7 @@
 import contextlib
 import errno
 import functools
+import glob
 import hashlib
 import logging
 import os
@@ -63,6 +64,47 @@ def remove_file_or_folder(path: str) -> None:
             pass
 
 
+def unique_path(path: str) -> str:
+    # a new path next to path, e.g. abc-1a2b3c4d.grib for abc.grib, that only the
+    #   caller knows, so no other process can use, replace or delete its file
+    root, ext = os.path.splitext(path)
+    return f"{root}-{str(uuid.uuid4())[:8]}{ext}"
+
+
+def link_data_file(data_file: str, link: str) -> None:
+    # makes link point to data_file, replacing the link already there. The new link
+    #   holds only the file name and is renamed onto the old one, so it's never missing
+    tmp_link = unique_path(link)
+    os.symlink(os.path.basename(data_file), tmp_link)
+    try:
+        os.replace(tmp_link, link)
+    finally:
+        remove_file_or_folder(tmp_link)
+
+
+def link_or_discard(data_file: str, link: str) -> None:
+    # makes link point to data_file, unless another process linked its copy first:
+    #   then deletes data_file. A link to a file deleted by hand is replaced
+    try:
+        os.symlink(os.path.basename(data_file), link)
+    except FileExistsError:
+        if os.path.exists(link):
+            remove_file_or_folder(data_file)
+        else:
+            link_data_file(data_file, link)
+
+
+def replace_data_file(data_file: str, link: str) -> None:
+    # points link to data_file, then deletes the file it pointed to with its cfgrib
+    #   indexes, only if that's a file in the same folder, as this code links them
+    old_name = os.readlink(link) if os.path.islink(link) else ""
+    old_path = os.path.join(os.path.dirname(link), old_name)
+    link_data_file(data_file, link)
+    if old_name == os.path.basename(old_name) and os.path.isfile(old_path):
+        for path in [old_path, *glob.glob(glob.escape(old_path) + ".*.idx")]:
+            remove_file_or_folder(path)
+
+
 def robust_save_to_file(
     saver: Callable[..., Any], args: Sequence[Any], path: str
 ) -> None:
@@ -87,26 +129,40 @@ def robust_save_to_file(
 class DatasetCacher:
     request_client: client_common.RequestClientProtocol
     open_dataset: Callable[..., xr.Dataset] = xr.open_dataset
-    cache_data_files: bool = True
+    # "keep" the data files in the cache and reuse them, "delete" a private copy
+    #   after each read, or "refresh" the cached ones
+    data_files: str = attrs.field(
+        default="delete", validator=attrs.validators.in_(["keep", "delete", "refresh"])
+    )
     cache_folder: str = "./.xarray-ecmwf-cache"
 
-    def get_or_download_data_file(self, request: dict[str, Any]) -> str:
+    def request_data_file(self, request: dict[str, Any]) -> tuple[Any, str]:
+        # asks the provider: returns the result to download, and where the data
+        #   file is kept in the cache folder, shared by every reader of the request
         LOGGER.info(f"retrieving {request}")
         result = self.request_client.submit_and_wait_on_result(request)
         filename = self.request_client.get_filename(result)
-        path = os.path.join(self.cache_folder, filename)
-        if not self.cache_data_files:
-            # a name only this call knows, so no other reader can use or delete it
-            root, ext = os.path.splitext(path)
-            path = f"{root}-{str(uuid.uuid4())[:8]}{ext}"
+        return result, os.path.join(self.cache_folder, filename)
 
-        if not os.path.isdir(self.cache_folder):
-            os.makedirs(self.cache_folder, exist_ok=True)
-
+    def maybe_download_data_file(self, result: Any, cache_path: str) -> str:
+        # returns the data file to read: the one cache_path links to, downloaded and
+        #   linked only if missing, or with "delete" and "refresh" a new private copy
+        os.makedirs(self.cache_folder, exist_ok=True)
         with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
-            if not os.path.exists(path):
-                robust_save_to_file(self.request_client.download, (result,), path)
-        return path
+            # exists follows the link: one to a file deleted by hand counts as missing
+            if self.data_files == "keep" and os.path.exists(cache_path):
+                return os.path.realpath(cache_path)
+            download_path = unique_path(cache_path)
+            robust_save_to_file(self.request_client.download, (result,), download_path)
+            if self.data_files != "keep":
+                return download_path
+            try:
+                link_or_discard(download_path, cache_path)
+            except OSError:
+                # don't leave behind a whole data file that nothing links to
+                remove_file_or_folder(download_path)
+                raise
+        return os.path.realpath(cache_path)
 
     @contextlib.contextmanager
     def open_data_file_and_clean(
@@ -116,23 +172,31 @@ class DatasetCacher:
         #   returns an empty file
         for try_ in range(tries):
             try:
-                path = self.get_or_download_data_file(request)
+                result, cache_path = self.request_data_file(request)
+                read_path = self.maybe_download_data_file(result, cache_path)
                 break
             except RuntimeError:
                 LOGGER.exception(f"Failed retrieve: {try_} / {tries}")
         else:
             raise RuntimeError(f"too many retries {tries}")
 
+        # a private copy, unless a refresh links it into the cache
+        delete_after = self.data_files != "keep"
         try:
-            ds = self.open_dataset(path)
+            ds = self.open_dataset(read_path)
             LOGGER.debug("request: %r ->\n%r", request, list(ds.data_vars.values())[0])
             yield ds
-        finally:
-            if not self.cache_data_files:
+            if self.data_files == "refresh":
                 try:
-                    os.remove(path)
-                except Exception:
-                    LOGGER.exception("While removing a data file")
+                    replace_data_file(read_path, cache_path)
+                except OSError:
+                    # the read worked: don't fail it because the cache can't be updated
+                    LOGGER.exception(f"failed to replace {cache_path}")
+                else:
+                    delete_after = False
+        finally:
+            if delete_after:
+                remove_file_or_folder(read_path)
 
     @contextlib.contextmanager
     def cached_empty_dataset(self, request: dict[str, Any]) -> Iterator[xr.Dataset]:
@@ -180,10 +244,12 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
     ) -> xr.Dataset:
         if not isinstance(filename_or_obj, dict):
             raise TypeError("argument must be a valid request dictionary")
-        if "cache_file" in cache_kwargs:
-            raise TypeError(
-                "cache_kwargs 'cache_file' was renamed to 'cache_data_files'"
-            )
+        for old_key in ["cache_file", "cache_data_files"]:
+            if old_key in cache_kwargs:
+                raise TypeError(
+                    f"cache_kwargs {old_key!r} was replaced by 'data_files': "
+                    "true is 'keep', false is 'delete'"
+                )
         request_client_class = request_client_class or SUPPORTED_CLIENTS[client]
         request_chunker_class = SUPPORTED_CHUNKERS[chunker]
 
@@ -193,10 +259,11 @@ class ECMWFBackendEntrypoint(xr.backends.BackendEntrypoint):
         )
         open_dataset_kwargs = {"engine": "cfgrib", "chunks": {}} | open_dataset_kwargs
         if (
-            not cache_kwargs.get("cache_data_files", True)
-            and open_dataset_kwargs["engine"] == "cfgrib"
+            open_dataset_kwargs["engine"] == "cfgrib"
+            and cache_kwargs.get("data_files", "delete") != "keep"
         ):
-            # indexpath is a cfgrib option: other engines fail on it
+            # no cfgrib index for a new delete or refresh copy: keep reads write one.
+            #   indexpath is a cfgrib option: other engines fail on it
             open_dataset_kwargs = open_dataset_kwargs | {"indexpath": ""}
 
         open_dataset = functools.partial(open_dataset, **open_dataset_kwargs)
