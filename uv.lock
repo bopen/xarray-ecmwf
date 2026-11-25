@@ -26,10 +26,6 @@ version = 1
 exclude-newer = "0001-01-01T00:00:00Z"  # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P4D"
 
-[options.exclude-newer-package]
-certifi = false
-virtualenv = false
-
 [[package]]
 dependencies = [
   {name = "pygments"}
@@ -2570,6 +2566,7 @@ dependencies = [
   {name = "dask"},
   {name = "ecmwf-datastores-client"},
   {name = "ecmwf-opendata"},
+  {name = "filelock"},
   {name = "numpy", version = "2.4.6", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version < '3.12'"},
   {name = "numpy", version = "2.5.4", source = {registry = "https://pypi.org/simple"}, marker = "python_full_version >= '3.12'"},
   {name = "pandas"},
@@ -2605,6 +2602,7 @@ requires-dist = [
   {name = "dask", specifier = ">=2026.8.0"},
   {name = "ecmwf-datastores-client", specifier = ">=0.1"},
   {name = "ecmwf-opendata", specifier = ">=0.2"},
+  {name = "filelock", specifier = ">=3.12"},
   {name = "numpy", specifier = ">=2.0"},
   {name = "pandas", specifier = ">=2.2.2"},
   {name = "polytope-client", specifier = ">=0.7.1"},

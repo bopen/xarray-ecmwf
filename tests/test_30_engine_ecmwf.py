@@ -1,4 +1,7 @@
+import concurrent.futures
 import os
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +12,12 @@ import xarray as xr
 from xarray_ecmwf import engine_ecmwf
 
 REQUEST = {"dataset": "dummy-dataset", "variable": ["dummy_variable"]}
+
+
+# the files in the cache folder, without the .lock files that data_files="keep"
+#   leaves next to each data file
+def listdir(path: Path) -> list[str]:
+    return [name for name in os.listdir(path) if not name.endswith(".lock")]
 
 
 # every download of the request gets the same file name, as with CDS
@@ -86,7 +95,7 @@ def test_cached_empty_dataset_keeps_the_sample_saved_first(
     ds = open_sample(tmp_path)
 
     assert ds.attrs["saved_by"] == "another process"
-    assert len([name for name in os.listdir(tmp_path) if ".zarr" in name]) == 1
+    assert len([name for name in listdir(tmp_path) if ".zarr" in name]) == 1
 
 
 def test_robust_save_to_file_removes_a_folder_it_failed_to_write(
@@ -99,7 +108,7 @@ def test_robust_save_to_file_removes_a_folder_it_failed_to_write(
     with pytest.raises(ValueError):
         engine_ecmwf.robust_save_to_file(failing_saver, (), str(tmp_path / "a.zarr"))
 
-    assert os.listdir(tmp_path) == []
+    assert listdir(tmp_path) == []
 
 
 def test_robust_save_to_file_raises_when_a_file_can_not_be_renamed(
@@ -112,7 +121,7 @@ def test_robust_save_to_file_raises_when_a_file_can_not_be_renamed(
             lambda target: Path(target).touch(), (), str(tmp_path / "a.grib")
         )
 
-    assert os.listdir(tmp_path) == ["a.grib"]
+    assert listdir(tmp_path) == ["a.grib"]
 
 
 # with data_files="delete" or "refresh" each read downloads its own copy and deletes
@@ -135,7 +144,7 @@ def test_readers_keep_their_own_files(
         assert os.path.exists(outer.attrs["path"])
 
     assert client.downloads == 2
-    assert len(os.listdir(tmp_path)) == files_left
+    assert len(listdir(tmp_path)) == files_left
     # a refresh links its copy into the cache
     assert os.path.exists(tmp_path / "request.grib") == (data_files == "refresh")
 
@@ -156,7 +165,7 @@ def test_a_private_copy_that_cannot_be_opened_is_deleted(
             pass
 
     assert cached.read_text() == "cached by an earlier run"
-    assert os.listdir(tmp_path) == ["request.grib"]
+    assert listdir(tmp_path) == ["request.grib"]
 
 
 @pytest.mark.parametrize("old_key", ["cache_file", "cache_data_files"])
@@ -213,7 +222,7 @@ def test_data_files_delete_is_the_default(tmp_path: Path) -> None:
     with cacher.open_data_file_and_clean(REQUEST):
         pass
 
-    assert os.listdir(tmp_path) == []
+    assert listdir(tmp_path) == []
 
 
 def test_data_files_keep_reuses_and_keeps_the_file(tmp_path: Path) -> None:
@@ -229,7 +238,7 @@ def test_data_files_keep_reuses_and_keeps_the_file(tmp_path: Path) -> None:
     # the file read is the one linked, not the link: if a refresh deletes it, the
     #   read fails instead of reading fields of the new file
     assert read_path == os.path.realpath(cached)
-    assert len(os.listdir(tmp_path)) == 2
+    assert len(listdir(tmp_path)) == 2
 
 
 # the download lock is per host: another worker pod can link its copy first
@@ -245,7 +254,7 @@ def test_data_files_keep_uses_the_copy_linked_first(tmp_path: Path) -> None:
     read_path = read_once(tmp_path, client=OtherPodFirstClient({}))
 
     assert read_path.endswith("request-otherpod.grib")
-    assert sorted(os.listdir(tmp_path)) == ["request-otherpod.grib", "request.grib"]
+    assert sorted(listdir(tmp_path)) == ["request-otherpod.grib", "request.grib"]
 
 
 def test_data_files_keep_deletes_its_download_if_it_cannot_link_it(
@@ -259,7 +268,7 @@ def test_data_files_keep_deletes_its_download_if_it_cannot_link_it(
     with pytest.raises(PermissionError):
         read_once(tmp_path)
 
-    assert os.listdir(tmp_path) == []
+    assert listdir(tmp_path) == []
 
 
 def test_data_files_keep_downloads_again_a_file_deleted_by_hand(
@@ -272,7 +281,7 @@ def test_data_files_keep_downloads_again_a_file_deleted_by_hand(
 
     assert client.downloads == 1
     assert (tmp_path / "request.grib").read_text() == "download 1"
-    assert len(os.listdir(tmp_path)) == 2
+    assert len(listdir(tmp_path)) == 2
 
 
 # open_data_file_and_clean tries again a failed download, like polytope's empty
@@ -296,7 +305,7 @@ def test_open_data_file_and_clean_tries_again_a_failed_download(
 
     assert client.downloads == 2
     assert (tmp_path / "request.grib").read_text() == "download 2"
-    assert len(os.listdir(tmp_path)) == 2
+    assert len(listdir(tmp_path)) == 2
 
 
 def test_open_data_file_and_clean_does_not_try_again_an_error_inside_the_with_block(
@@ -328,7 +337,7 @@ def test_data_files_refresh_downloads_again_and_refreshes_the_cache(
 
     # the link points to the new file; the old file and its index are deleted
     assert os.readlink(tmp_path / "request.grib") == new
-    assert sorted(os.listdir(tmp_path)) == sorted([new, "request.grib"])
+    assert sorted(listdir(tmp_path)) == sorted([new, "request.grib"])
 
 
 # a link made by hand to a file outside the cache folder: refresh moves the link,
@@ -363,11 +372,41 @@ def test_data_files_refresh_keeps_the_read_if_the_cache_cannot_be_updated(
     # the link and the old file are untouched
     assert "failed to replace" in caplog.text
     assert os.path.realpath(tmp_path / "request.grib") == old
-    assert sorted(os.listdir(tmp_path)) == sorted(
-        [os.path.basename(old), "request.grib"]
-    )
+    assert sorted(listdir(tmp_path)) == sorted([os.path.basename(old), "request.grib"])
 
 
 def test_data_files_rejects_an_unknown_value() -> None:
     with pytest.raises(ValueError, match="'data_files' must be in"):
         engine_ecmwf.DatasetCacher(DummyClient({}), data_files="refesh")
+
+
+# with data_files="delete" downloads of concurrent reads overlap: each one waits
+#   for the other to start, which fails with a timeout if they run one at a time
+def test_data_files_delete_downloads_in_parallel(tmp_path: Path) -> None:
+    barrier = threading.Barrier(2, timeout=5)
+
+    class ParallelClient(DummyClient):
+        def download(self, result: Any, target: str | None = None) -> str:
+            barrier.wait()
+            return super().download(result, target)
+
+    client = ParallelClient({})
+    with concurrent.futures.ThreadPoolExecutor(2) as pool:
+        futures = [pool.submit(read_once, tmp_path, "delete", client) for _ in range(2)]
+        for future in futures:
+            future.result()
+    assert client.downloads == 2
+
+
+# with data_files="keep" concurrent reads of the same request download it once
+def test_data_files_keep_downloads_a_request_once(tmp_path: Path) -> None:
+    class SlowClient(DummyClient):
+        def download(self, result: Any, target: str | None = None) -> str:
+            time.sleep(0.2)
+            return super().download(result, target)
+
+    client = SlowClient({})
+    with concurrent.futures.ThreadPoolExecutor(4) as pool:
+        paths = list(pool.map(lambda _: read_once(tmp_path, "keep", client), range(4)))
+    assert client.downloads == 1
+    assert len(set(paths)) == 1

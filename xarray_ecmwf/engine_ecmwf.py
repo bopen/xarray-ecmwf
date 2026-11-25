@@ -11,6 +11,7 @@ import uuid
 from typing import Any, Callable, Iterable, Iterator, Sequence
 
 import attrs
+import filelock
 import numpy as np
 import xarray as xr
 
@@ -148,14 +149,19 @@ class DatasetCacher:
         # returns the data file to read: the one cache_path links to, downloaded and
         #   linked only if missing, or with "delete" and "refresh" a new private copy
         os.makedirs(self.cache_folder, exist_ok=True)
-        with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
+        if self.data_files != "keep":
+            # a private copy: nobody else uses its path, so there's nothing to lock
+            download_path = unique_path(cache_path)
+            robust_save_to_file(self.request_client.download, (result,), download_path)
+            return download_path
+        # one download per data file: readers of the same request, in any thread,
+        # process or pod sharing the cache folder, wait for it. Other files don't
+        with filelock.FileLock(cache_path + ".lock"):
             # exists follows the link: one to a file deleted by hand counts as missing
-            if self.data_files == "keep" and os.path.exists(cache_path):
+            if os.path.exists(cache_path):
                 return os.path.realpath(cache_path)
             download_path = unique_path(cache_path)
             robust_save_to_file(self.request_client.download, (result,), download_path)
-            if self.data_files != "keep":
-                return download_path
             try:
                 link_or_discard(download_path, cache_path)
             except OSError:
