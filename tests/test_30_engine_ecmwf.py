@@ -18,6 +18,7 @@ REQUEST = {"dataset": "dummy-dataset", "variable": ["dummy_variable"]}
 class DummyClient:
     def __init__(self, client_kwargs: dict[str, Any]) -> None:
         self.downloads = 0
+        self.downloads_lock = threading.Lock()
 
     def submit_and_wait_on_result(self, request: dict[str, Any]) -> Any:
         return request
@@ -27,8 +28,11 @@ class DummyClient:
 
     def download(self, result: Any, target: str | None = None) -> str:
         assert target is not None
-        self.downloads += 1
-        Path(target).write_text(f"download {self.downloads}")
+        # += isn't atomic: concurrent downloads could lose a count
+        with self.downloads_lock:
+            self.downloads += 1
+            download = self.downloads
+        Path(target).write_text(f"download {download}")
         return target
 
 
@@ -381,8 +385,9 @@ def test_data_files_rejects_an_unknown_value() -> None:
 class ParallelClient(DummyClient):
     def __init__(self, client_kwargs: dict[str, Any]) -> None:
         super().__init__(client_kwargs)
-        self.barrier = threading.Barrier(2, timeout=5)
+        self.barrier = threading.Barrier(2, timeout=1)
 
+    # one data file per dataset, so different requests don't share a cache path
     def get_filename(self, result: Any) -> str:
         return f"{result['dataset']}.grib"
 
@@ -393,7 +398,10 @@ class ParallelClient(DummyClient):
 
 # reads each request on its own thread, and returns the paths of the files read
 def read_concurrently(
-    tmp_path: Path, data_files: str, client: DummyClient, requests: list[Any]
+    tmp_path: Path,
+    data_files: str,
+    client: DummyClient,
+    requests: list[dict[str, Any]],
 ) -> list[str]:
     cacher = engine_ecmwf.DatasetCacher(
         client, open_dummy, cache_folder=str(tmp_path), data_files=data_files
@@ -408,26 +416,27 @@ def read_concurrently(
 
 
 # with data_files="delete" and "refresh" each read downloads its private copy, so
-#   downloads of the same request overlap
-@pytest.mark.parametrize("data_files", ["delete", "refresh"])
-def test_private_copies_download_in_parallel(tmp_path: Path, data_files: str) -> None:
-    client = ParallelClient({})
-    read_concurrently(tmp_path, data_files, client, [REQUEST, REQUEST])
-    assert client.downloads == 2
-
-
-# with data_files="keep" downloads of different requests overlap
-def test_data_files_keep_downloads_different_requests_in_parallel(
-    tmp_path: Path,
+#   downloads of the same request overlap; with "keep" only different requests do
+@pytest.mark.parametrize(
+    "data_files, requests",
+    [
+        ("delete", [REQUEST, REQUEST]),
+        ("refresh", [REQUEST, REQUEST]),
+        ("keep", [REQUEST, REQUEST | {"dataset": "other-dataset"}]),
+    ],
+)
+def test_downloads_that_may_overlap_run_in_parallel(
+    tmp_path: Path, data_files: str, requests: list[dict[str, Any]]
 ) -> None:
     client = ParallelClient({})
-    requests = [REQUEST, REQUEST | {"dataset": "other-dataset"}]
-    read_concurrently(tmp_path, "keep", client, requests)
+    read_concurrently(tmp_path, data_files, client, requests)
     assert client.downloads == 2
 
 
-# with data_files="keep" concurrent reads of the same request download it once
-def test_data_files_keep_downloads_a_request_once(tmp_path: Path) -> None:
+# with data_files="keep" concurrent reads of the same request all read the file
+#   linked in the cache. Usually it's downloaded once, but xarray creates a new
+#   key's lock with a check-then-set, so two readers may both download it
+def test_data_files_keep_reads_share_the_cached_file(tmp_path: Path) -> None:
     class SlowClient(DummyClient):
         def download(self, result: Any, target: str | None = None) -> str:
             time.sleep(0.2)
@@ -435,5 +444,4 @@ def test_data_files_keep_downloads_a_request_once(tmp_path: Path) -> None:
 
     client = SlowClient({})
     paths = read_concurrently(tmp_path, "keep", client, [REQUEST] * 4)
-    assert client.downloads == 1
-    assert len(set(paths)) == 1
+    assert set(paths) == {os.path.realpath(tmp_path / "request.grib")}
