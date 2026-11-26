@@ -1,4 +1,7 @@
+import concurrent.futures
 import os
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -371,3 +374,66 @@ def test_data_files_refresh_keeps_the_read_if_the_cache_cannot_be_updated(
 def test_data_files_rejects_an_unknown_value() -> None:
     with pytest.raises(ValueError, match="'data_files' must be in"):
         engine_ecmwf.DatasetCacher(DummyClient({}), data_files="refesh")
+
+
+# downloads that may overlap wait for each other to start: if they ran one at a
+#   time, the first one would fail with a timeout
+class ParallelClient(DummyClient):
+    def __init__(self, client_kwargs: dict[str, Any]) -> None:
+        super().__init__(client_kwargs)
+        self.barrier = threading.Barrier(2, timeout=5)
+
+    def get_filename(self, result: Any) -> str:
+        return f"{result['dataset']}.grib"
+
+    def download(self, result: Any, target: str | None = None) -> str:
+        self.barrier.wait()
+        return super().download(result, target)
+
+
+# reads each request on its own thread, and returns the paths of the files read
+def read_concurrently(
+    tmp_path: Path, data_files: str, client: DummyClient, requests: list[Any]
+) -> list[str]:
+    cacher = engine_ecmwf.DatasetCacher(
+        client, open_dummy, cache_folder=str(tmp_path), data_files=data_files
+    )
+
+    def read(request: dict[str, Any]) -> str:
+        with cacher.open_data_file_and_clean(request) as ds:
+            return str(ds.attrs["path"])
+
+    with concurrent.futures.ThreadPoolExecutor(len(requests)) as pool:
+        return list(pool.map(read, requests))
+
+
+# with data_files="delete" and "refresh" each read downloads its private copy, so
+#   downloads of the same request overlap
+@pytest.mark.parametrize("data_files", ["delete", "refresh"])
+def test_private_copies_download_in_parallel(tmp_path: Path, data_files: str) -> None:
+    client = ParallelClient({})
+    read_concurrently(tmp_path, data_files, client, [REQUEST, REQUEST])
+    assert client.downloads == 2
+
+
+# with data_files="keep" downloads of different requests overlap
+def test_data_files_keep_downloads_different_requests_in_parallel(
+    tmp_path: Path,
+) -> None:
+    client = ParallelClient({})
+    requests = [REQUEST, REQUEST | {"dataset": "other-dataset"}]
+    read_concurrently(tmp_path, "keep", client, requests)
+    assert client.downloads == 2
+
+
+# with data_files="keep" concurrent reads of the same request download it once
+def test_data_files_keep_downloads_a_request_once(tmp_path: Path) -> None:
+    class SlowClient(DummyClient):
+        def download(self, result: Any, target: str | None = None) -> str:
+            time.sleep(0.2)
+            return super().download(result, target)
+
+    client = SlowClient({})
+    paths = read_concurrently(tmp_path, "keep", client, [REQUEST] * 4)
+    assert client.downloads == 1
+    assert len(set(paths)) == 1

@@ -148,14 +148,18 @@ class DatasetCacher:
         # returns the data file to read: the one cache_path links to, downloaded and
         #   linked only if missing, or with "delete" and "refresh" a new private copy
         os.makedirs(self.cache_folder, exist_ok=True)
-        with xr.backends.locks.get_write_lock(f"{HOSTNAME}-grib"):
+        if self.data_files != "keep":
+            # a private copy: nobody else uses its path, so there's nothing to lock
+            download_path = unique_path(cache_path)
+            robust_save_to_file(self.request_client.download, (result,), download_path)
+            return download_path
+        # one lock per data file: only readers of the same request wait for each other
+        with xr.backends.locks.get_write_lock(f"{HOSTNAME}-{cache_path}"):
             # exists follows the link: one to a file deleted by hand counts as missing
-            if self.data_files == "keep" and os.path.exists(cache_path):
+            if os.path.exists(cache_path):
                 return os.path.realpath(cache_path)
             download_path = unique_path(cache_path)
             robust_save_to_file(self.request_client.download, (result,), download_path)
-            if self.data_files != "keep":
-                return download_path
             try:
                 link_or_discard(download_path, cache_path)
             except OSError:
